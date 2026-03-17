@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
 
@@ -28,19 +28,15 @@ export default function Login() {
 
   const anima = () => {
     Animated.sequence([
-      // Logo entra con spring
       Animated.parallel([
         Animated.spring(logoScale, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
         Animated.timing(logoOp, { toValue: 1, duration: 700, useNativeDriver: true }),
       ]),
-      // Linea dorata si espande
       Animated.timing(lineW, { toValue: 1, duration: 350, useNativeDriver: false }),
-      // Titolo scende
       Animated.parallel([
         Animated.timing(titleOp, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(titleY, { toValue: 0, duration: 400, useNativeDriver: true }),
       ]),
-      // Form sale
       Animated.parallel([
         Animated.timing(formOp, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.timing(formY, { toValue: 0, duration: 400, useNativeDriver: true }),
@@ -104,93 +100,119 @@ export default function Login() {
   };
 
   if (checking) return (
-    <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+    <View style={s.loaderContainer}>
       <ActivityIndicator color="#D4AF37" size="large" />
     </View>
   );
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Background elements */}
-      <View style={s.bgCircle1} />
-      <View style={s.bgCircle2} />
+    <View style={s.container}>
+      <KeyboardAvoidingView 
+        style={s.keyboardView} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView 
+          contentContainerStyle={s.scroll} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+          overScrollMode="never"
+        >
+          {/* Logo */}
+          <Animated.View style={[s.logoBox, { opacity: logoOp, transform: [{ scale: logoScale }] }]}>
+            <View style={s.logoGlow} />
+            <View style={s.logoWrap}>
+              <Image source={require('../assets/images/logo.png')} style={s.logoImg} resizeMode="cover" />
+            </View>
+          </Animated.View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-        
-        {/* Logo con animazione spring */}
-        <Animated.View style={[s.logoBox, { opacity: logoOp, transform: [{ scale: logoScale }] }]}>
-          <View style={s.logoGlow} />
-          <View style={s.logoWrap}>
-            <Image source={require('../assets/images/logo.png')} style={s.logoImg} resizeMode="cover" />
-          </View>
-        </Animated.View>
+          {/* Linea dorata */}
+          <Animated.View style={[s.goldLine, { 
+            width: lineW.interpolate({ inputRange: [0, 1], outputRange: ['0%', '40%'] }) 
+          }]} />
 
-        {/* Linea dorata animata */}
-        <Animated.View style={[s.goldLine, { 
-          width: lineW.interpolate({ inputRange: [0, 1], outputRange: ['0%', '40%'] }) 
-        }]} />
+          {/* Titolo */}
+          <Animated.View style={[s.titleBox, { opacity: titleOp, transform: [{ translateY: titleY }] }]}>
+            <Text style={s.brand}>BULLDOG</Text>
+            <Text style={s.brandSub}>BARBER SHOP</Text>
+          </Animated.View>
 
-        {/* Titolo animato */}
-        <Animated.View style={[s.titleBox, { opacity: titleOp, transform: [{ translateY: titleY }] }]}>
-          <Text style={s.brand}>BULLDOG</Text>
-          <Text style={s.brandSub}>BARBER SHOP</Text>
-        </Animated.View>
+          {/* Form */}
+          <Animated.View style={[s.formCard, { opacity: formOp, transform: [{ translateY: formY }] }]}>
+            <View style={s.tabRow}>
+              <Pressable style={[s.tab, modo === 'login' && s.tabActive]} onPress={() => { setModo('login'); setErrore(''); }}>
+                <Text style={[s.tabText, modo === 'login' && s.tabTextActive]}>Accedi</Text>
+              </Pressable>
+              <Pressable style={[s.tab, modo === 'registrazione' && s.tabActive]} onPress={() => { setModo('registrazione'); setErrore(''); }}>
+                <Text style={[s.tabText, modo === 'registrazione' && s.tabTextActive]}>Registrati</Text>
+              </Pressable>
+            </View>
 
-        {/* Form con animazione */}
-        <Animated.View style={[s.formCard, { opacity: formOp, transform: [{ translateY: formY }] }]}>
-          {/* Tab Accedi / Registrati */}
-          <View style={s.tabRow}>
-            <Pressable style={[s.tab, modo === 'login' && s.tabActive]} onPress={() => { setModo('login'); setErrore(''); }}>
-              <Text style={[s.tabText, modo === 'login' && s.tabTextActive]}>Accedi</Text>
-            </Pressable>
-            <Pressable style={[s.tab, modo === 'registrazione' && s.tabActive]} onPress={() => { setModo('registrazione'); setErrore(''); }}>
-              <Text style={[s.tabText, modo === 'registrazione' && s.tabTextActive]}>Registrati</Text>
-            </Pressable>
-          </View>
-
-          {modo === 'registrazione' && (
-            <>
-              <View style={s.row}>
-                <View style={s.halfField}>
-                  <Text style={s.label}>Nome *</Text>
-                  <TextInput style={s.input} value={nome} onChangeText={setNome} placeholder="Nome" placeholderTextColor="#333" />
+            {modo === 'registrazione' && (
+              <>
+                <View style={s.row}>
+                  <View style={s.halfField}>
+                    <Text style={s.label}>Nome *</Text>
+                    <TextInput style={s.input} value={nome} onChangeText={setNome} placeholder="Nome" placeholderTextColor="#333" />
+                  </View>
+                  <View style={s.halfField}>
+                    <Text style={s.label}>Cognome</Text>
+                    <TextInput style={s.input} value={cognome} onChangeText={setCognome} placeholder="Cognome" placeholderTextColor="#333" />
+                  </View>
                 </View>
-                <View style={s.halfField}>
-                  <Text style={s.label}>Cognome</Text>
-                  <TextInput style={s.input} value={cognome} onChangeText={setCognome} placeholder="Cognome" placeholderTextColor="#333" />
-                </View>
-              </View>
-              <Text style={s.label}>Telefono</Text>
-              <TextInput style={s.input} value={telefono} onChangeText={setTelefono} placeholder="Il tuo numero" placeholderTextColor="#333" keyboardType="phone-pad" />
-            </>
-          )}
-
-          <Text style={s.label}>Email *</Text>
-          <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="La tua email" placeholderTextColor="#333" keyboardType="email-address" autoCapitalize="none" />
-
-          <Text style={s.label}>Password *</Text>
-          <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="La tua password" placeholderTextColor="#333" secureTextEntry />
-
-          {errore ? <Text style={s.errore}>{errore}</Text> : null}
-
-          <Pressable style={[s.btn, loading && { opacity: 0.6 }]} onPress={modo === 'login' ? eseguiLogin : eseguiRegistrazione} disabled={loading}>
-            {loading ? <ActivityIndicator color="#0A0A0A" size="small" /> : (
-              <Text style={s.btnText}>{modo === 'login' ? 'Accedi' : 'Crea Account'}</Text>
+                <Text style={s.label}>Telefono</Text>
+                <TextInput style={s.input} value={telefono} onChangeText={setTelefono} placeholder="Il tuo numero" placeholderTextColor="#333" keyboardType="phone-pad" />
+              </>
             )}
-          </Pressable>
-        </Animated.View>
 
-        <Text style={s.footer}>PRENOTA IL TUO STILE</Text>
-      </ScrollView>
-    </SafeAreaView>
+            <Text style={s.label}>Email *</Text>
+            <TextInput style={s.input} value={email} onChangeText={setEmail} placeholder="La tua email" placeholderTextColor="#333" keyboardType="email-address" autoCapitalize="none" />
+
+            <Text style={s.label}>Password *</Text>
+            <TextInput style={s.input} value={password} onChangeText={setPassword} placeholder="La tua password" placeholderTextColor="#333" secureTextEntry />
+
+            {errore ? <Text style={s.errore}>{errore}</Text> : null}
+
+            <Pressable style={[s.btn, loading && { opacity: 0.6 }]} onPress={modo === 'login' ? eseguiLogin : eseguiRegistrazione} disabled={loading}>
+              {loading ? <ActivityIndicator color="#0A0A0A" size="small" /> : (
+                <Text style={s.btnText}>{modo === 'login' ? 'Accedi' : 'Crea Account'}</Text>
+              )}
+            </Pressable>
+          </Animated.View>
+
+          <Text style={s.footer}>PRENOTA IL TUO STILE</Text>
+          
+          {/* Spazio extra per quando la tastiera è aperta */}
+          <View style={{ height: 50 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0A0A' },
-  bgCircle1: { position: 'absolute', top: -80, right: -80, width: 250, height: 250, borderRadius: 125, backgroundColor: '#D4AF37', opacity: 0.03 },
-  bgCircle2: { position: 'absolute', bottom: -60, left: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: '#D4AF37', opacity: 0.03 },
-  scroll: { padding: 28, alignItems: 'center', justifyContent: 'center', minHeight: '100%' as any },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#0A0A0A',
+  },
+  loaderContainer: {
+    flex: 1, 
+    backgroundColor: '#0A0A0A', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  keyboardView: {
+    flex: 1,
+    backgroundColor: '#0A0A0A',
+  },
+  scroll: { 
+    flexGrow: 1,
+    padding: 28, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: '#0A0A0A',
+  },
   
   // Logo
   logoBox: { alignItems: 'center', marginBottom: 16 },
@@ -215,7 +237,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   halfField: { flex: 1 },
   label: { color: '#666', fontSize: 11, fontWeight: '700', marginBottom: 5, marginTop: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
-  input: { backgroundColor: '#0A0A0A', borderWidth: 1, borderColor: '#1A1A1A', borderRadius: 12, padding: 14, color: '#FFF', fontSize: 15 },
+  input: { backgroundColor: '#0A0A0A', borderWidth: 1, borderColor: '#1A1A1A', borderRadius: 12, padding: 14, color: '#FFF', fontSize: 16 },
   
   errore: { color: '#F44336', fontSize: 12, marginTop: 12, textAlign: 'center' },
   btn: { backgroundColor: '#D4AF37', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 20, cursor: 'pointer' as any },
