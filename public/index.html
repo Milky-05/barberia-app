@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" style="height:100%;overflow:hidden;background:#0A0A0A;">
 <head>
   <meta charset="utf-8" />
   <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   
   <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#D4AF37" />
+  <meta name="theme-color" content="#0A0A0A" />
   <meta name="description" content="Prenota il tuo appuntamento alla Bulldog Barber Shop" />
   
   <!-- Apple PWA -->
@@ -24,27 +24,54 @@
   <title>Bulldog Barber Shop</title>
   
   <style>
-    /* Previeni lo scrolling del body su iOS */
-    html, body { 
-      margin: 0; 
-      padding: 0; 
+    *, *::before, *::after { box-sizing: border-box; }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
       overflow: hidden;
       background-color: #0A0A0A;
       -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overscroll-behavior: none;
     }
-    #root { 
-      display: flex; 
-      flex: 1; 
-      height: 100vh; 
-      height: 100dvh;
+    
+    #root {
+      display: flex;
+      flex: 1;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #0A0A0A;
     }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      #root {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    }
+
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   
   <script>
-    // Registra Service Worker per PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
