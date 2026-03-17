@@ -87,6 +87,9 @@ export default function Home() {
   };
 
   const logout = async () => {
+    if (Platform.OS === 'web') {
+      if (!window.confirm("Sei sicuro di voler uscire?")) return;
+    }
     await AsyncStorage.removeItem('token'); await AsyncStorage.removeItem('utente');
     router.replace('/');
   };
@@ -222,11 +225,11 @@ export default function Home() {
 
             {/* Quick Actions */}
             <View style={s.quickActions}>
-              <Pressable style={s.quickBtn} onPress={() => { setEditMode(true); }}>
+              <Pressable style={s.quickBtn} onPress={() => { setEditMode(true); setShowPw(false); }}>
                 <View style={s.quickIcon}><Text style={{fontSize:18}}>✏️</Text></View>
                 <Text style={s.quickText}>Modifica</Text>
               </Pressable>
-              <Pressable style={s.quickBtn} onPress={() => setShowPw(!showPw)}>
+              <Pressable style={s.quickBtn} onPress={() => { setShowPw(!showPw); setEditMode(false); }}>
                 <View style={s.quickIcon}><Text style={{fontSize:18}}>🔒</Text></View>
                 <Text style={s.quickText}>Password</Text>
               </Pressable>
@@ -282,18 +285,20 @@ export default function Home() {
               </View>
             )}
 
-            {/* Info */}
-            <View style={s.infoSection}>
-              <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Appuntamenti attivi</Text>
-                <Text style={s.infoValue}>{numAppuntamenti}</Text>
+            {/* Info - solo quando non si sta modificando */}
+            {!editMode && !showPw && (
+              <View style={s.infoSection}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Appuntamenti attivi</Text>
+                  <Text style={s.infoValue}>{numAppuntamenti}</Text>
+                </View>
+                <View style={s.infoDivider} />
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Messaggi non letti</Text>
+                  <Text style={s.infoValue}>{nonLette}</Text>
+                </View>
               </View>
-              <View style={s.infoDivider} />
-              <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Messaggi non letti</Text>
-                <Text style={s.infoValue}>{nonLette}</Text>
-              </View>
-            </View>
+            )}
 
           </ScrollView>
         </Animated.View>
