@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" style="background:#0A0A0A">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0A0A0A" />
   <meta name="color-scheme" content="dark" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,15 +13,15 @@
   <link rel="icon" type="image/png" href="/icon-192.png" />
   <title>Bulldog Barber Shop</title>
   <style>
-    html, body, #root { margin:0; padding:0; background:#0A0A0A; height:100%; width:100%; overflow:hidden; }
+    html { background:#0A0A0A!important; height:100%; }
+    body { margin:0; padding:0; background:#0A0A0A!important; height:100%; overflow:hidden; overscroll-behavior:none; }
+    #root { display:flex; flex:1; height:100dvh; background:#0A0A0A!important; }
     input,select,textarea { font-size:16px!important; }
     ::-webkit-scrollbar { display:none; }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script>
-    if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})});}
-  </script>
+  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}</script>
 </body>
 </html>
