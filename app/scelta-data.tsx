@@ -108,6 +108,7 @@ export default function SceltaData() {
       });
       const result = await response.json();
       if (result.success) {
+        await AsyncStorage.removeItem('appuntamenti_visti');
         const msg = `${servizio_nome} con ${barbiereSelezionato.nome}\n${dataSelezionata} alle ${oraSelezionata}`;
         if (Platform.OS === 'web') {
           window.alert("Confermato! 🎉\n\n" + msg);

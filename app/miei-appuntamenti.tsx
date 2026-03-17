@@ -9,16 +9,27 @@ export default function MieiAppuntamenti() {
   const [prenotazioni, setPrenotazioni] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState('');
+  const [showBanner, setShowBanner] = useState(false);
   const headerOp = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(headerOp, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     init();
+
+    // Quando si esce dalla schermata, segna come visti
+    return () => {
+      AsyncStorage.setItem('appuntamenti_visti', 'true');
+    };
   }, []);
 
   const init = async () => {
     const t = await AsyncStorage.getItem('token');
     setToken(t || '');
+    
+    // Controlla se è la prima volta che entra dopo una nuova prenotazione
+    const visti = await AsyncStorage.getItem('appuntamenti_visti');
+    if (!visti) setShowBanner(true);
+    
     carica(t || '');
   };
 
@@ -69,38 +80,40 @@ export default function MieiAppuntamenti() {
         </View>
       ) : (
         <>
-          <View style={st.confirmBanner}>
-            <Text style={{fontSize: 18}}>✅</Text>
-            <Text style={st.confirmText}>Hai {prenotazioni.length} appuntament{prenotazioni.length === 1 ? 'o confermato' : 'i confermati'}</Text>
-          </View>
+          {showBanner && (
+            <View style={st.confirmBanner}>
+              <Text style={{fontSize: 18}}>✅</Text>
+              <Text style={st.confirmText}>Hai {prenotazioni.length} appuntament{prenotazioni.length === 1 ? 'o confermato' : 'i confermati'}</Text>
+            </View>
+          )}
           <FlatList data={prenotazioni} keyExtractor={i => i.id.toString()} showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const d = fmtData(item.data);
-            return (
-              <View style={st.card}>
-                <View style={st.cardRow}>
-                  <View style={st.dateBox}>
-                    <Text style={st.dateDay}>{d.giorno}</Text>
-                    <Text style={st.dateNum}>{d.numero}</Text>
-                    <Text style={st.dateMon}>{d.mese}</Text>
+            renderItem={({ item }) => {
+              const d = fmtData(item.data);
+              return (
+                <View style={st.card}>
+                  <View style={st.cardRow}>
+                    <View style={st.dateBox}>
+                      <Text style={st.dateDay}>{d.giorno}</Text>
+                      <Text style={st.dateNum}>{d.numero}</Text>
+                      <Text style={st.dateMon}>{d.mese}</Text>
+                    </View>
+                    <View style={{flex:1}}>
+                      <Text style={st.cardServ}>{item.servizio_nome}</Text>
+                      <Text style={st.cardDet}>🕐 {item.ora?.slice(0,5)}  💈 {item.barbiere_nome}</Text>
+                      <Text style={st.sedeTag}>📍 {item.sede_nome}</Text>
+                    </View>
+                    <Text style={st.cardPrice}>€{item.servizio_prezzo}</Text>
                   </View>
-                  <View style={{flex:1}}>
-                    <Text style={st.cardServ}>{item.servizio_nome}</Text>
-                    <Text style={st.cardDet}>🕐 {item.ora?.slice(0,5)}  💈 {item.barbiere_nome}</Text>
-                    <Text style={st.sedeTag}>📍 {item.sede_nome}</Text>
+                  <View style={st.cardFoot}>
+                    <View style={st.statoChip}><Text style={st.statoText}>● Confermato</Text></View>
+                    <Pressable style={st.cancelBtn} onPress={() => cancella(item.id)}>
+                      <Text style={st.cancelText}>Cancella</Text>
+                    </Pressable>
                   </View>
-                  <Text style={st.cardPrice}>€{item.servizio_prezzo}</Text>
                 </View>
-                <View style={st.cardFoot}>
-                  <View style={st.statoChip}><Text style={st.statoText}>● Confermato</Text></View>
-                  <Pressable style={st.cancelBtn} onPress={() => cancella(item.id)}>
-                    <Text style={st.cancelText}>Cancella</Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          }}
-        />
+              );
+            }}
+          />
         </>
       )}
     </SafeAreaView>

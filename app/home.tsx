@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
@@ -68,6 +68,19 @@ export default function Home() {
       if (Array.isArray(data)) setNumAppuntamenti(data.length);
     } catch (err) {}
   };
+
+  // Ricarica i contatori ogni volta che torni alla home
+  useFocusEffect(
+    useCallback(() => {
+      const ricarica = async () => {
+        const visti = await AsyncStorage.getItem('appuntamenti_visti');
+        if (visti) setNumAppuntamenti(0);
+        else contaAppuntamenti();
+        contaNotifiche();
+      };
+      ricarica();
+    }, [])
+  );
 
   // ===== BOTTOM SHEET =====
   const apriSheet = () => {
