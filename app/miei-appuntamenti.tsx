@@ -68,7 +68,12 @@ export default function MieiAppuntamenti() {
           </Pressable>
         </View>
       ) : (
-        <FlatList data={prenotazioni} keyExtractor={i => i.id.toString()} showsVerticalScrollIndicator={false}
+        <>
+          <View style={st.confirmBanner}>
+            <Text style={{fontSize: 18}}>✅</Text>
+            <Text style={st.confirmText}>Hai {prenotazioni.length} appuntament{prenotazioni.length === 1 ? 'o confermato' : 'i confermati'}</Text>
+          </View>
+          <FlatList data={prenotazioni} keyExtractor={i => i.id.toString()} showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const d = fmtData(item.data);
             return (
@@ -96,6 +101,7 @@ export default function MieiAppuntamenti() {
             );
           }}
         />
+        </>
       )}
     </SafeAreaView>
   );
@@ -107,6 +113,8 @@ const st = StyleSheet.create({
   backBtn: { marginBottom: 20, cursor: 'pointer' as any },
   backText: { color: '#D4AF37', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 28, fontWeight: '800', color: '#FFF' },
+  confirmBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(76,175,80,0.08)', borderWidth: 1, borderColor: 'rgba(76,175,80,0.2)', borderRadius: 14, padding: 14, marginBottom: 16 },
+  confirmText: { color: '#4CAF50', fontSize: 14, fontWeight: '700' },
   card: { backgroundColor: '#141414', borderRadius: 18, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: '#1E1E1E' },
   cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   dateBox: { width: 60, height: 70, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 14 },

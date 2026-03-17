@@ -19,6 +19,7 @@ export default function Home() {
   const [nuovaPw, setNuovaPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [nonLette, setNonLette] = useState(0);
+  const [numAppuntamenti, setNumAppuntamenti] = useState(0);
 
   const drawerAnim = useRef(new Animated.Value(DW)).current;
   const overlayOp = useRef(new Animated.Value(0)).current;
@@ -31,6 +32,7 @@ export default function Home() {
   useEffect(() => {
     caricaUtente();
     contaNotifiche();
+    contaAppuntamenti();
     Animated.timing(headerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
     setTimeout(() => {
       Animated.parallel([
@@ -58,6 +60,17 @@ export default function Home() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setNonLette(data.filter((n: any) => !n.letta).length);
+      }
+    } catch (err) {}
+  };
+
+  const contaAppuntamenti = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const res = await fetch(`${BACKEND_URL}/api/prenotazioni/miei`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setNumAppuntamenti(data.length);
       }
     } catch (err) {}
   };
@@ -141,7 +154,12 @@ export default function Home() {
         <Animated.View style={[s.grid, { opacity: gridOp, transform: [{ translateY: gridY }] }]}>
           <Pressable style={({ pressed }) => [s.gridCard, pressed && s.gridCardPressed]}
             onPress={() => router.push('/miei-appuntamenti' as any)}>
-            <Text style={s.gridIcon}>🕒</Text>
+            <View style={s.msgIconRow}>
+              <Text style={s.gridIcon}>🕒</Text>
+              {numAppuntamenti > 0 && (
+                <View style={s.badge}><Text style={s.badgeText}>{numAppuntamenti}</Text></View>
+              )}
+            </View>
             <Text style={s.gridTitle}>Appuntamenti</Text>
             <Text style={s.gridSub}>Visualizza e gestisci</Text>
           </Pressable>
