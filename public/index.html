@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it" style="height:100%;overflow:hidden;background:#0A0A0A;">
+<html lang="it">
 <head>
   <meta charset="utf-8" />
   <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -7,6 +7,7 @@
   
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#0A0A0A" />
+  <meta name="color-scheme" content="dark" />
   <meta name="description" content="Prenota il tuo appuntamento alla Bulldog Barber Shop" />
   
   <!-- Apple PWA -->
@@ -24,59 +25,97 @@
   <title>Bulldog Barber Shop</title>
   
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent;
+    }
     
-    html, body {
+    html {
+      background-color: #0A0A0A !important;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    body {
       margin: 0;
       padding: 0;
+      background-color: #0A0A0A !important;
       height: 100%;
-      width: 100%;
       overflow: hidden;
-      background-color: #0A0A0A;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-text-size-adjust: 100%;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
       overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+      -webkit-text-size-adjust: 100%;
     }
     
     #root {
       display: flex;
-      flex: 1;
-      height: 100%;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
       width: 100%;
-      overflow: hidden;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #0A0A0A;
+      background-color: #0A0A0A !important;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
+    /* Forza sfondo nero su TUTTO - anche oltre i bordi */
+    html::before {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: -200px;
+      right: -200px;
+      bottom: -200px;
+      background-color: #0A0A0A;
+      z-index: -1;
+    }
+
+    /* Safe area per iPhone con notch */
     @supports (padding-top: env(safe-area-inset-top)) {
-      #root {
+      body {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
       }
     }
 
+    /* Nascondi scrollbar */
     ::-webkit-scrollbar { display: none; }
     * { scrollbar-width: none; }
+    
+    /* Fix input zoom su iOS */
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
   
   <script>
+    // Registra Service Worker per PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then(reg => console.log('SW registrato'))
           .catch(err => console.log('SW errore:', err));
+      });
+    }
+
+    // Fix per tastiera iOS: quando si apre la tastiera, scrolla al campo attivo
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      document.addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          setTimeout(() => {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
+      });
+
+      // Quando la tastiera si chiude, resetta lo scroll
+      document.addEventListener('focusout', function() {
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 100);
       });
     }
   </script>
