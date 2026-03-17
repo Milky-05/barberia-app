@@ -10,6 +10,7 @@ const getIcona = (nome: string) => {
   if (n.includes('taglio') && n.includes('modellatura')) return '💇‍♂️';
   if (n.includes('taglio') && n.includes('rifinitura')) return '✂️';
   if (n.includes('taglio')) return '💈';
+  if (n.includes('modellatura') && n.includes('rasatura')) return '🧖‍♂️';
   if (n.includes('modellatura')) return '🪒';
   if (n.includes('rasatura')) return '🧔';
   if (n.includes('rifinitura')) return '✨';
