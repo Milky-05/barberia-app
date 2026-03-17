@@ -1,22 +1,19 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-// ⚠️ METTI QUI IL TUO BACKEND URL ⚠️
 const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
-
-const icone: Record<string, string> = {
-  'taglio': '✂️',
-  'barba': '🪒',
-  'taglio + barba': '💇‍♂️',
-  'trattamento': '💆‍♂️',
-};
 
 const getIcona = (nome: string) => {
   const n = nome.toLowerCase();
-  for (const key of Object.keys(icone)) {
-    if (n.includes(key)) return icone[key];
-  }
+  if (n.includes('bimbo') || n.includes('under')) return '👦';
+  if (n.includes('taglio') && n.includes('modellatura')) return '💇‍♂️';
+  if (n.includes('taglio') && n.includes('rifinitura')) return '✂️';
+  if (n.includes('taglio')) return '💈';
+  if (n.includes('modellatura')) return '🪒';
+  if (n.includes('rasatura')) return '🧔';
+  if (n.includes('rifinitura')) return '✨';
+  if (n.includes('trattamento')) return '💆‍♂️';
   return '💈';
 };
 
@@ -64,29 +61,32 @@ export default function SceltaServizio() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <Animated.View style={[styles.header, { opacity: headerOpacity, transform: [{ translateY: headerTranslate }] }]}>
-        <Pressable onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Indietro</Text>
-        </Pressable>
-        <Text style={styles.title}>Cosa facciamo oggi?</Text>
-        <View style={styles.sedeChip}>
-          <Text style={styles.sedeChipText}>📍 {nome_sede}</Text>
-        </View>
-      </Animated.View>
+      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        {/* Header */}
+        <Animated.View style={[styles.header, { opacity: headerOpacity, transform: [{ translateY: headerTranslate }] }]}>
+          <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Indietro</Text>
+          </Pressable>
+          <Text style={styles.title}>Cosa facciamo oggi?</Text>
+          <View style={styles.sedeChip}>
+            <Text style={styles.sedeChipText}>📍 {nome_sede}</Text>
+          </View>
+        </Animated.View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#D4AF37" size="large" />
-          <Text style={styles.loadingText}>Caricamento servizi...</Text>
-        </View>
-      ) : (
-        <View style={styles.cardsContainer}>
-          {servizi.map((item, index) => (
-            <AnimatedCard key={item.id} item={item} index={index} onPress={selezionaServizio} />
-          ))}
-        </View>
-      )}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator color="#D4AF37" size="large" />
+            <Text style={styles.loadingText}>Caricamento servizi...</Text>
+          </View>
+        ) : (
+          <View style={styles.cardsContainer}>
+            {servizi.map((item, index) => (
+              <AnimatedCard key={item.id} item={item} index={index} onPress={selezionaServizio} />
+            ))}
+          </View>
+        )}
+        <View style={{height: 40}} />
+      </ScrollView>
     </SafeAreaView>
   );
 }

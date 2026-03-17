@@ -7,9 +7,13 @@ const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
 
 const getIcona = (nome: string) => {
   const n = nome.toLowerCase();
-  if (n.includes('taglio') && n.includes('barba')) return '💇‍♂️';
-  if (n.includes('taglio')) return '✂️';
-  if (n.includes('barba')) return '🪒';
+  if (n.includes('bimbo') || n.includes('under')) return '👦';
+  if (n.includes('taglio') && n.includes('modellatura')) return '💇‍♂️';
+  if (n.includes('taglio') && n.includes('rifinitura')) return '✂️';
+  if (n.includes('taglio')) return '💈';
+  if (n.includes('modellatura')) return '🪒';
+  if (n.includes('rasatura')) return '🧔';
+  if (n.includes('rifinitura')) return '✨';
   if (n.includes('trattamento')) return '💆‍♂️';
   return '💈';
 };
