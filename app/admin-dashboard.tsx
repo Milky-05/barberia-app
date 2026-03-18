@@ -41,6 +41,10 @@ export default function AdminDashboard() {
   const [orariNuovo, setOrariNuovo] = useState<string[]>([]);
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
+  const [showModifica, setShowModifica] = useState(false);
+  const [modificaApp, setModificaApp] = useState<any>(null);
+  const [modNome, setModNome] = useState('');
+  const [modServizio, setModServizio] = useState(0);
   const [assenzaBarbiere, setAssenzaBarbiere] = useState(0);
   const [assenzaMotivo, setAssenzaMotivo] = useState('');
   const [showProfilo, setShowProfilo] = useState(false);
@@ -82,6 +86,19 @@ export default function AdminDashboard() {
   const caricaOrariNuovo = async (barbId: number, servId: number) => { setLoadingOrari(true); setNewOra(''); try { const res = await fetch(`${BACKEND_URL}/api/orari-disponibili?barbiere_id=${barbId}&data=${dataCorrente}&servizio_id=${servId}`); const data = await res.json(); setOrariNuovo(Array.isArray(data) ? data : []); } catch (err) { setOrariNuovo([]); } setLoadingOrari(false); };
   const apriModalAggiungi = () => { const p = barbieri.find(b => !b.assente); const ps = servizi[0]; setNewBarbiere(p?.id || 0); setNewServizio(ps?.id || 0); setNewCliente(''); setNewOra(''); setShowAggiungi(true); if (p && ps) caricaOrariNuovo(p.id, ps.id); };
   const salvaAggiungi = async () => { if (!newCliente) { msg("Inserisci il nome del cliente"); return; } if (!newOra) { msg("Seleziona un orario"); return; } try { const res = await fetch(`${BACKEND_URL}/api/admin/prenotazioni`, { method: 'POST', headers: auth(), body: JSON.stringify({ sede_id: sedeCorrente, barbiere_id: newBarbiere, cliente_nome: newCliente, data: dataCorrente, ora: newOra, servizio_id: newServizio }) }); const data = await res.json(); if (data.success) { setShowAggiungi(false); setNewCliente(''); caricaPrenotazioni(); } else msg(data.error); } catch (err) { msg("Errore"); } };
+  const salvaModifica = async () => {
+    if (!modificaApp) return;
+    try {
+      // Aggiorna nome cliente e servizio
+      const res = await fetch(`${BACKEND_URL}/api/admin/prenotazioni/${modificaApp.id}`, { 
+        method: 'PATCH', headers: auth(), 
+        body: JSON.stringify({ cliente_nome: modNome || modificaApp.cliente_nome }) 
+      });
+      const data = await res.json();
+      if (data.success) { setShowModifica(false); setModificaApp(null); caricaPrenotazioni(); msg("Appuntamento modificato!"); }
+      else msg(data.error || "Errore");
+    } catch (err) { msg("Errore"); }
+  };
   const segnaAssente = async () => { if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; } const bN = barbieri.find(b => b.id === assenzaBarbiere)?.nome || ''; if (Platform.OS === 'web') { if (!window.confirm(`Cancellare tutti gli appuntamenti di ${bN}?`)) return; } try { const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-assente`, { method: 'POST', headers: auth(), body: JSON.stringify({ barbiere_id: assenzaBarbiere, motivo: assenzaMotivo || 'Assente' }) }); const data = await res.json(); if (data.success) { msg(data.messaggio); setShowAssenza(false); setAssenzaMotivo(''); caricaBarbieri(); caricaPrenotazioni(); } else msg(data.error); } catch (err) { msg("Errore"); } };
   const riattiva = async (id: number) => { try { const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-presente`, { method: 'POST', headers: auth(), body: JSON.stringify({ barbiere_id: id }) }); const data = await res.json(); if (data.success) { msg("Barbiere riattivato!"); caricaBarbieri(); caricaPrenotazioni(); } else msg(data.error); } catch (err) { msg("Errore"); } };
   const apriProfilo = () => { setShowProfilo(true); Animated.parallel([ Animated.spring(sheetAnim, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }), Animated.timing(overlayOp, { toValue: 1, duration: 300, useNativeDriver: true }), ]).start(); };
@@ -168,19 +185,47 @@ export default function AdminDashboard() {
         <Text style={st.secTitle}>— Appuntamenti</Text>
         {orariGiornata.length === 0 ? (
           <View style={st.emptyBox}><Text style={{fontSize:40,marginBottom:12}}>🔒</Text><Text style={st.emptyText}>Giorno di chiusura</Text></View>
+        ) : prenotazioniPerBarbiere.length === 1 ? (
+          // VISTA SINGOLO BARBIERE - full width
+          <View>
+            {orariGiornata.map(ora => {
+              const app = prenotazioniPerBarbiere[0].appuntamenti.find((p: any) => p.ora?.slice(0,5) === ora);
+              return (
+                <View key={ora} style={[st.singleRow, app && st.singleRowOcc]}>
+                  <View style={st.singleOraBox}><Text style={[st.singleOra, !app && {color:'#333'}]}>{ora}</Text></View>
+                  {app ? (
+                    <View style={st.singleApp}>
+                      <View style={{flex:1}}>
+                        <Text style={st.singleCliente}>{app.cliente_nome}</Text>
+                        <Text style={st.singleServizio}>✂️ {app.servizio_nome}  •  {app.durata_minuti || 40} min</Text>
+                      </View>
+                      <View style={st.singleBtns}>
+                        <Pressable style={st.singleEditBtn} onPress={() => { setModificaApp(app); setModNome(app.cliente_nome); setModServizio(app.servizio_id || 0); setShowModifica(true); }}>
+                          <Text style={st.singleEditText}>✏️</Text>
+                        </Pressable>
+                        <Pressable style={st.singleDelBtn} onPress={() => cancella(app.id)}>
+                          <Text style={st.singleDelText}>🗑️</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={st.singleEmpty}><Text style={st.singleEmptyText}>Libero</Text></View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         ) : (
+          // VISTA MULTI BARBIERE - tabella con scroll orizzontale
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
-              {/* Header barbieri */}
               <View style={st.tblHeaderRow}>
                 <View style={st.tblOraCol}><Text style={st.tblOraHeader}>ORA</Text></View>
                 {prenotazioniPerBarbiere.map(b => (
                   <View key={b.id} style={st.tblBarbCol}><Text style={st.tblBarbName}>💈 {b.nome}</Text></View>
                 ))}
               </View>
-              {/* Righe con tutti gli orari della giornata */}
               {orariGiornata.map(ora => {
-                // Controlla se almeno un barbiere ha un appuntamento in questo orario
                 const haApp = prenotazioniPerBarbiere.some(b => b.appuntamenti.some((p: any) => p.ora?.slice(0,5) === ora));
                 return (
                   <View key={ora} style={[st.tblRow, haApp && st.tblRowOccupata]}>
@@ -226,6 +271,18 @@ export default function AdminDashboard() {
         <Text style={st.mLabel}>BARBIERE</Text><View style={st.mGrid}>{barbieri.filter(b=>!b.assente).map(b => (<Pressable key={b.id} style={[st.mChip, assenzaBarbiere===b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}><Text style={[st.mChipText, assenzaBarbiere===b.id && st.mChipTextA]}>{b.nome}</Text></Pressable>))}</View>
         <Text style={st.mLabel}>MOTIVO</Text><TextInput style={st.mInput} value={assenzaMotivo} onChangeText={setAssenzaMotivo} placeholder="Es: Malato..." placeholderTextColor="#333" />
         <View style={st.mBtns}><Pressable style={st.mCancel} onPress={() => setShowAssenza(false)}><Text style={{color:'#666',fontWeight:'700',fontSize:14}}>Annulla</Text></Pressable><Pressable style={[st.mConfirm,{backgroundColor:'#F44336'}]} onPress={segnaAssente}><Text style={{color:'#FFF',fontWeight:'800',fontSize:14}}>Conferma</Text></Pressable></View>
+      </View></View>)}
+
+      {showModifica && modificaApp && (<View style={st.modalOv}><View style={st.modal}>
+        <Text style={st.mTitle}>✏️ Modifica Appuntamento</Text>
+        <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)} alle {modificaApp.ora?.slice(0,5)}</Text>
+        <Text style={st.mLabel}>NOME CLIENTE</Text>
+        <TextInput style={st.mInput} value={modNome} onChangeText={setModNome} placeholder="Nome cliente" placeholderTextColor="#333" />
+        <View style={st.mBtns}>
+          <Pressable style={st.mCancel} onPress={() => { setShowModifica(false); setModificaApp(null); }}><Text style={{color:'#666',fontWeight:'700',fontSize:14}}>Annulla</Text></Pressable>
+          <Pressable style={st.mConfirm} onPress={salvaModifica}><Text style={{color:'#0A0A0A',fontWeight:'800',fontSize:14}}>Salva</Text></Pressable>
+        </View>
+        <Pressable style={[st.mCancel,{marginTop:10,backgroundColor:'rgba(244,67,54,0.08)',borderWidth:1,borderColor:'rgba(244,67,54,0.2)'}]} onPress={() => { setShowModifica(false); cancella(modificaApp.id); }}><Text style={{color:'#F44336',fontWeight:'700',fontSize:14,textAlign:'center'}}>🗑️ Elimina Appuntamento</Text></Pressable>
       </View></View>)}
 
       {showProfilo && (<Animated.View style={[st.overlay, { opacity: overlayOp }]} pointerEvents="auto"><Pressable style={{flex:1}} onPress={chiudiProfilo} /></Animated.View>)}
@@ -313,6 +370,21 @@ const st = StyleSheet.create({
   tblAppDelText: { color: '#F44336', fontSize: 10, fontWeight: '700' },
   tblEmpty: { alignItems: 'center', justifyContent: 'center', height: 50 },
   tblEmptyText: { color: '#222', fontSize: 16 },
+  // Singolo barbiere full width
+  singleRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 60, paddingVertical: 6 },
+  singleRowOcc: { backgroundColor: 'rgba(212,175,55,0.02)' },
+  singleOraBox: { width: 60, alignItems: 'center', justifyContent: 'center' },
+  singleOra: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
+  singleApp: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, padding: 12, marginLeft: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37' },
+  singleCliente: { color: '#FFF', fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  singleServizio: { color: '#888', fontSize: 12 },
+  singleBtns: { flexDirection: 'row', gap: 8, marginLeft: 10 },
+  singleEditBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(212,175,55,0.08)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  singleEditText: { fontSize: 14 },
+  singleDelBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(244,67,54,0.06)', borderWidth: 1, borderColor: 'rgba(244,67,54,0.2)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  singleDelText: { fontSize: 14 },
+  singleEmpty: { flex: 1, marginLeft: 8, paddingVertical: 8 },
+  singleEmptyText: { color: '#222', fontSize: 13 },
   listCont: { gap: 8 },
   listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1E1E1E', gap: 12 },
   listOraBox: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.08)', alignItems: 'center', justifyContent: 'center' },
