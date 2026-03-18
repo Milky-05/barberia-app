@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
-const ORARI = ["09:00","09:40","10:20","11:00","11:40","15:00","15:40","16:20","17:00","17:40","18:20"];
+const ORARI_NORMALI = ["09:00","09:40","10:20","11:00","11:40","15:00","15:40","16:20","17:00","17:40","18:20"];
+const ORARI_GIOVEDI = ["12:00","12:40","13:20","14:00","14:40","15:20","16:00","16:40","17:20","18:00","18:40","19:20","20:00","20:40","21:20"];
 
 export default function AdminDashboard() {
   const [token, setToken] = useState('');
@@ -267,7 +268,7 @@ export default function AdminDashboard() {
             <Pressable key={sv.id} style={[st.selBtn, newServizio===sv.id && st.selBtnA]} onPress={() => setNewServizio(sv.id)}><Text style={[st.selText, newServizio===sv.id && st.selTextA]}>{sv.nome}</Text></Pressable>
           ))}</ScrollView>
           <Text style={st.label}>Ora</Text>
-          <ScrollView horizontal style={st.selRow}>{ORARI.map(o => (
+          <ScrollView horizontal style={st.selRow}>{(new Date(dataCorrente).getDay() === 4 ? ORARI_GIOVEDI : ORARI_NORMALI).map(o => (
             <Pressable key={o} style={[st.selBtn, newOra===o && st.selBtnA]} onPress={() => setNewOra(o)}><Text style={[st.selText, newOra===o && st.selTextA]}>{o}</Text></Pressable>
           ))}</ScrollView>
           <View style={st.modBtns}>

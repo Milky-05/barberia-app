@@ -132,7 +132,7 @@ export default function SceltaData() {
     const marked: any = {};
     const d = new Date(dataOggiString);
     while (d <= treSettimane) {
-      if (d.getDay() === 0) marked[d.toISOString().split('T')[0]] = { disabled: true, disableTouchEvent: true };
+      if (d.getDay() === 0 || d.getDay() === 1) marked[d.toISOString().split('T')[0]] = { disabled: true, disableTouchEvent: true };
       d.setDate(d.getDate() + 1);
     }
     if (dataSelezionata) marked[dataSelezionata] = { ...marked[dataSelezionata], selected: true, selectedColor: '#D4AF37' };

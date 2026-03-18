@@ -9,17 +9,11 @@ const SEDI_INFO = [
     id: 1, nome: 'Colonna',
     indirizzo: 'Via Roma 1, Colonna (RM)',
     telefono: '06 1234567',
-    orari: 'Lunedì - Sabato: 9:00 - 19:00\nDomenica: Chiuso',
-    fissi: ['Alessandro', 'Davide'],
-    rotanti_label: 'Barbieri in rotazione',
   },
   {
     id: 2, nome: 'Frascati',
     indirizzo: 'Corso Italia 15, Frascati (RM)',
     telefono: '06 7654321',
-    orari: 'Lunedì - Sabato: 9:00 - 19:00\nDomenica: Chiuso',
-    fissi: ['Simone', 'Federico'],
-    rotanti_label: 'Barbieri in rotazione',
   },
 ];
 
@@ -127,8 +121,9 @@ function SedeCard({ sede, index, barbieri, aperta, onToggle }: any) {
             <Text style={st.detailIcon}>🕐</Text>
             <View>
               <Text style={st.detailLabel}>Orari di apertura</Text>
-              <Text style={st.detailValue}>Lunedì - Sabato: 9:00 - 19:00</Text>
-              <Text style={st.detailClosed}>Domenica: Chiuso</Text>
+              <Text style={st.detailValue}>Mar, Mer, Ven, Sab: 9:00 - 19:00</Text>
+              <Text style={st.detailValue}>Giovedì: 12:00 - 22:00</Text>
+              <Text style={st.detailClosed}>Domenica e Lunedì: Chiuso</Text>
             </View>
           </View>
 
