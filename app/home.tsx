@@ -30,7 +30,7 @@ export default function Home() {
   const gridY = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    caricaUtente(); contaNotifiche(); contaAppuntamenti();
+    caricaUtente(); contaNotifiche();
     Animated.timing(headerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
     setTimeout(() => {
       Animated.parallel([
