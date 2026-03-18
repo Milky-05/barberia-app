@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   });
   const [prenotazioni, setPrenotazioni] = useState<any[]>([]);
   const [barbieri, setBarbieri] = useState<any[]>([]);
+  const [barbieriAssenti, setBarbieriAssenti] = useState<any[]>([]);
   const [servizi, setServizi] = useState<any[]>([]);
   const [filtroBarbiere, setFiltroBarbiere] = useState<number|null>(null);
   const [showFiltri, setShowFiltri] = useState(false);
@@ -63,7 +64,19 @@ export default function AdminDashboard() {
     } catch (err) { router.replace('/'); }
   };
   useEffect(() => { if (sedeCorrente && token) { caricaBarbieri(); caricaPrenotazioni(); } }, [sedeCorrente, dataCorrente, filtroBarbiere]);
-  const caricaBarbieri = async () => { try { const res = await fetch(`${BACKEND_URL}/api/admin/barbieri?sede_id=${sedeCorrente}`, { headers: auth() }); setBarbieri(await res.json()); } catch (err) {} };
+  const caricaBarbieri = async () => { 
+    try { 
+      const res = await fetch(`${BACKEND_URL}/api/barbieri-disponibili?sede_id=${sedeCorrente}&data=${dataCorrente}`); 
+      const data = await res.json();
+      if (Array.isArray(data)) { setBarbieri(data); }
+      else if (data.barbieri) { setBarbieri(data.barbieri); }
+      else { setBarbieri([]); }
+      // Carica anche assenti
+      const resAll = await fetch(`${BACKEND_URL}/api/admin/barbieri?sede_id=${sedeCorrente}`, { headers: auth() });
+      const allBarb = await resAll.json();
+      if (Array.isArray(allBarb)) { setBarbieriAssenti(allBarb.filter((b: any) => b.assente)); }
+    } catch (err) { setBarbieri([]); } 
+  };
   const caricaPrenotazioni = async () => { let url = `${BACKEND_URL}/api/admin/prenotazioni?sede_id=${sedeCorrente}&data=${dataCorrente}`; if (filtroBarbiere) url += `&barbiere_id=${filtroBarbiere}`; try { const res = await fetch(url, { headers: auth() }); if (res.status === 401) { logout(); return; } setPrenotazioni(await res.json()); } catch (err) {} };
   const cancella = async (id: number) => { if (Platform.OS === 'web') { if (!window.confirm("Cancellare questo appuntamento?")) return; } try { await fetch(`${BACKEND_URL}/api/admin/prenotazioni/${id}`, { method: 'DELETE', headers: auth() }); caricaPrenotazioni(); } catch (err) { msg("Errore"); } };
   const caricaOrariNuovo = async (barbId: number, servId: number) => { setLoadingOrari(true); setNewOra(''); try { const res = await fetch(`${BACKEND_URL}/api/orari-disponibili?barbiere_id=${barbId}&data=${dataCorrente}&servizio_id=${servId}`); const data = await res.json(); setOrariNuovo(Array.isArray(data) ? data : []); } catch (err) { setOrariNuovo([]); } setLoadingOrari(false); };
@@ -80,7 +93,35 @@ export default function AdminDashboard() {
 
   if (loading) return <View style={[st.container,{justifyContent:'center',alignItems:'center'}]}><ActivityIndicator color="#D4AF37" size="large" /></View>;
   const attivi = prenotazioni.filter(p => p.stato === 'attivo');
-  const prenotazioniPerBarbiere = barbieri.filter(b => !b.assente).map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
+  
+  // Barbieri da mostrare nella tabella
+  const barbieriTabella = filtroBarbiere 
+    ? barbieri.filter(b => b.id === filtroBarbiere)
+    : barbieri;
+  
+  const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
+
+  // Genera tutti gli orari della giornata
+  const getOrariGiornata = () => {
+    const dt = new Date(dataCorrente);
+    const giorno = dt.getDay();
+    if (giorno === 0 || giorno === 1) return []; // Chiuso
+    const fasce = giorno === 4
+      ? [[720, 1320]] // Giovedì 12:00-22:00
+      : [[540, 720], [900, 1140]]; // Altri 9:00-12:00, 15:00-19:00
+    const orari: string[] = [];
+    for (const fascia of fasce) {
+      let t = fascia[0];
+      while (t < fascia[1]) {
+        const h = Math.floor(t / 60).toString().padStart(2, '0');
+        const m = (t % 60).toString().padStart(2, '0');
+        orari.push(`${h}:${m}`);
+        t += 20; // Granularità 20 min
+      }
+    }
+    return orari;
+  };
+  const orariGiornata = getOrariGiornata();
 
   return (
     <SafeAreaView style={st.container}>
@@ -122,11 +163,12 @@ export default function AdminDashboard() {
 
         <View style={st.actRow}><Pressable style={st.actGold} onPress={apriModalAggiungi}><Text style={st.actGoldText}>+ Nuovo Appuntamento</Text></Pressable><Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find(b=>!b.assente)?.id||0); setShowAssenza(true); }}><Text style={st.actRedText}>🔴 Assente</Text></Pressable></View>
 
-        {barbieri.filter(b=>b.assente).map(b => (<View key={b.id} style={st.absCard}><Text style={st.absText}>🔴 {b.nome} è assente</Text><Pressable style={st.absBtn} onPress={() => riattiva(b.id)}><Text style={st.absBtnText}>Riattiva</Text></Pressable></View>))}
+        {barbieriAssenti.map(b => (<View key={b.id} style={st.absCard}><Text style={st.absText}>🔴 {b.nome} è assente</Text><Pressable style={st.absBtn} onPress={() => riattiva(b.id)}><Text style={st.absBtnText}>Riattiva</Text></Pressable></View>))}
 
         <Text style={st.secTitle}>— Appuntamenti</Text>
-        {attivi.length === 0 ? (<View style={st.emptyBox}><Text style={{fontSize:40,marginBottom:12}}>📋</Text><Text style={st.emptyText}>Nessun appuntamento</Text></View>
-        ) : !filtroBarbiere ? (
+        {orariGiornata.length === 0 ? (
+          <View style={st.emptyBox}><Text style={{fontSize:40,marginBottom:12}}>🔒</Text><Text style={st.emptyText}>Giorno di chiusura</Text></View>
+        ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View>
               {/* Header barbieri */}
@@ -136,16 +178,13 @@ export default function AdminDashboard() {
                   <View key={b.id} style={st.tblBarbCol}><Text style={st.tblBarbName}>💈 {b.nome}</Text></View>
                 ))}
               </View>
-              {/* Righe orari - genera tutti gli slot unici ordinati */}
-              {(() => {
-                // Raccogli tutti gli orari unici dagli appuntamenti
-                const tuttiOrari = new Set<string>();
-                attivi.forEach((p: any) => tuttiOrari.add(p.ora?.slice(0,5)));
-                const orariOrdinati = Array.from(tuttiOrari).sort();
-
-                return orariOrdinati.map(ora => (
-                  <View key={ora} style={st.tblRow}>
-                    <View style={st.tblOraCol}><Text style={st.tblOraText}>{ora}</Text></View>
+              {/* Righe con tutti gli orari della giornata */}
+              {orariGiornata.map(ora => {
+                // Controlla se almeno un barbiere ha un appuntamento in questo orario
+                const haApp = prenotazioniPerBarbiere.some(b => b.appuntamenti.some((p: any) => p.ora?.slice(0,5) === ora));
+                return (
+                  <View key={ora} style={[st.tblRow, haApp && st.tblRowOccupata]}>
+                    <View style={st.tblOraCol}><Text style={[st.tblOraText, !haApp && {color:'#333'}]}>{ora}</Text></View>
                     {prenotazioniPerBarbiere.map(b => {
                       const app = b.appuntamenti.find((p: any) => p.ora?.slice(0,5) === ora);
                       return (
@@ -164,16 +203,10 @@ export default function AdminDashboard() {
                       );
                     })}
                   </View>
-                ));
-              })()}
+                );
+              })}
             </View>
           </ScrollView>
-        ) : (
-          <View style={st.listCont}>{attivi.sort((a: any, b: any) => a.ora.localeCompare(b.ora)).map(p => (
-            <View key={p.id} style={st.listCard}><View style={st.listOraBox}><Text style={st.listOra}>{p.ora?.slice(0,5)}</Text></View>
-              <View style={{flex:1}}><Text style={st.listCli}>{p.cliente_nome}</Text><Text style={st.listInfo}>✂️ {p.servizio_nome}  •  💈 {p.barbiere_nome}</Text></View>
-              <Pressable style={st.listDel} onPress={() => cancella(p.id)}><Text style={st.listDelText}>✕</Text></Pressable>
-            </View>))}</View>
         )}
         <View style={{height:40}} />
       </ScrollView>
@@ -269,6 +302,7 @@ const st = StyleSheet.create({
   tblBarbCol: { width: 140, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tblBarbName: { color: '#D4AF37', fontSize: 13, fontWeight: '700' },
   tblRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 70 },
+  tblRowOccupata: { backgroundColor: 'rgba(212,175,55,0.02)' },
   tblOraText: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' },
   tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' },
