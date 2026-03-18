@@ -67,8 +67,22 @@ export default function SceltaData() {
   }, [dataSelezionata]);
 
   // Carica orari quando si sceglie il barbiere
+  const [federicoSoloChiamata, setFedericoSoloChiamata] = useState(false);
+  
   useEffect(() => {
     if (!barbiereSelezionato || !dataSelezionata) return;
+    
+    // Check Federico (id=6) + Venerdì (5) o Sabato (6)
+    const giornoSett = new Date(dataSelezionata).getDay();
+    if (barbiereSelezionato.nome === 'Federico' && (giornoSett === 5 || giornoSett === 6)) {
+      setFedericoSoloChiamata(true);
+      setOrariDisponibili([]);
+      setOraSelezionata('');
+      Animated.timing(step3Opacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      return;
+    }
+    
+    setFedericoSoloChiamata(false);
     setLoadingOrari(true);
     setOraSelezionata('');
 
@@ -221,7 +235,16 @@ export default function SceltaData() {
               <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
               <Text style={styles.stepTitle}>Scegli l'Orario</Text>
             </View>
-            {loadingOrari ? (
+            {federicoSoloChiamata ? (
+              <View style={styles.chiamataBox}>
+                <Text style={{fontSize: 28, marginBottom: 12}}>📞</Text>
+                <Text style={styles.chiamataTitle}>Solo su chiamata</Text>
+                <Text style={styles.chiamataText}>Per prenotare con Federico il Venerdì e il Sabato, contattaci telefonicamente.</Text>
+                <View style={styles.chiamataNumero}>
+                  <Text style={styles.chiamataNumeroText}>📞 06 1234567</Text>
+                </View>
+              </View>
+            ) : loadingOrari ? (
               <ActivityIndicator color="#D4AF37" size="small" style={{ marginVertical: 20 }} />
             ) : orariDisponibili.length === 0 ? (
               <Text style={styles.emptyText}>Nessun orario disponibile</Text>
@@ -309,6 +332,11 @@ const styles = StyleSheet.create({
   timeText: { color: '#AAA', fontSize: 15, fontWeight: '600' },
   timeTextSelected: { color: '#D4AF37' },
   emptyText: { color: '#444', fontSize: 14, textAlign: 'center', marginVertical: 20 },
+  chiamataBox: { alignItems: 'center', backgroundColor: 'rgba(212,175,55,0.05)', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' },
+  chiamataTitle: { color: '#D4AF37', fontSize: 18, fontWeight: '800', marginBottom: 8 },
+  chiamataText: { color: '#888', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  chiamataNumero: { backgroundColor: 'rgba(212,175,55,0.1)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
+  chiamataNumeroText: { color: '#D4AF37', fontSize: 16, fontWeight: '700' },
   riepilogo: { 
     backgroundColor: '#141414', borderRadius: 18, padding: 22, marginTop: 28,
     borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)',
