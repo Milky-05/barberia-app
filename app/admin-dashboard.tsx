@@ -127,11 +127,47 @@ export default function AdminDashboard() {
         <Text style={st.secTitle}>— Appuntamenti</Text>
         {attivi.length === 0 ? (<View style={st.emptyBox}><Text style={{fontSize:40,marginBottom:12}}>📋</Text><Text style={st.emptyText}>Nessun appuntamento</Text></View>
         ) : !filtroBarbiere ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={st.colCont}>
-            {prenotazioniPerBarbiere.map(b => (<View key={b.id} style={st.col}><View style={st.colHead}><Text style={st.colHeadText}>💈 {b.nome}</Text><Text style={st.colNum}>{b.appuntamenti.length}</Text></View>
-              {b.appuntamenti.length===0 ? <Text style={st.colNone}>Nessuno</Text> : b.appuntamenti.map((p: any) => (<View key={p.id} style={st.colItem}><Text style={st.colOra}>{p.ora?.slice(0,5)}</Text><Text style={st.colCli}>{p.cliente_nome}</Text><Text style={st.colServ}>✂️ {p.servizio_nome}</Text><Pressable style={st.colDel} onPress={() => cancella(p.id)}><Text style={st.colDelText}>Cancella</Text></Pressable></View>))}
-            </View>))}
-          </View></ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View>
+              {/* Header barbieri */}
+              <View style={st.tblHeaderRow}>
+                <View style={st.tblOraCol}><Text style={st.tblOraHeader}>ORA</Text></View>
+                {prenotazioniPerBarbiere.map(b => (
+                  <View key={b.id} style={st.tblBarbCol}><Text style={st.tblBarbName}>💈 {b.nome}</Text></View>
+                ))}
+              </View>
+              {/* Righe orari - genera tutti gli slot unici ordinati */}
+              {(() => {
+                // Raccogli tutti gli orari unici dagli appuntamenti
+                const tuttiOrari = new Set<string>();
+                attivi.forEach((p: any) => tuttiOrari.add(p.ora?.slice(0,5)));
+                const orariOrdinati = Array.from(tuttiOrari).sort();
+
+                return orariOrdinati.map(ora => (
+                  <View key={ora} style={st.tblRow}>
+                    <View style={st.tblOraCol}><Text style={st.tblOraText}>{ora}</Text></View>
+                    {prenotazioniPerBarbiere.map(b => {
+                      const app = b.appuntamenti.find((p: any) => p.ora?.slice(0,5) === ora);
+                      return (
+                        <View key={b.id} style={st.tblCell}>
+                          {app ? (
+                            <View style={st.tblAppCard}>
+                              <Text style={st.tblAppCliente}>{app.cliente_nome}</Text>
+                              <Text style={st.tblAppServizio}>{app.servizio_nome}</Text>
+                              <Text style={st.tblAppDurata}>{app.durata_minuti || 40} min</Text>
+                              <Pressable style={st.tblAppDel} onPress={() => cancella(app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
+                            </View>
+                          ) : (
+                            <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ));
+              })()}
+            </View>
+          </ScrollView>
         ) : (
           <View style={st.listCont}>{attivi.sort((a: any, b: any) => a.ora.localeCompare(b.ora)).map(p => (
             <View key={p.id} style={st.listCard}><View style={st.listOraBox}><Text style={st.listOra}>{p.ora?.slice(0,5)}</Text></View>
@@ -226,6 +262,23 @@ const st = StyleSheet.create({
   colServ: { color: '#666', fontSize: 12, marginBottom: 8 },
   colDel: { alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 6, backgroundColor: 'rgba(244,67,54,0.06)', borderWidth: 1, borderColor: 'rgba(244,67,54,0.2)', cursor: 'pointer' as any },
   colDelText: { color: '#F44336', fontSize: 11, fontWeight: '700' },
+  // Tabella
+  tblHeaderRow: { flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: '#1E1E1E', paddingBottom: 10, marginBottom: 4 },
+  tblOraCol: { width: 60, justifyContent: 'center', alignItems: 'center' },
+  tblOraHeader: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  tblBarbCol: { width: 140, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tblBarbName: { color: '#D4AF37', fontSize: 13, fontWeight: '700' },
+  tblRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 70 },
+  tblOraText: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
+  tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' },
+  tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' },
+  tblAppCliente: { color: '#FFF', fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  tblAppServizio: { color: '#888', fontSize: 11 },
+  tblAppDurata: { color: '#555', fontSize: 10, marginTop: 2 },
+  tblAppDel: { position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(244,67,54,0.1)', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  tblAppDelText: { color: '#F44336', fontSize: 10, fontWeight: '700' },
+  tblEmpty: { alignItems: 'center', justifyContent: 'center', height: 50 },
+  tblEmptyText: { color: '#222', fontSize: 16 },
   listCont: { gap: 8 },
   listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1E1E1E', gap: 12 },
   listOraBox: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.08)', alignItems: 'center', justifyContent: 'center' },
