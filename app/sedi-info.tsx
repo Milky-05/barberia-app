@@ -121,9 +121,13 @@ function SedeCard({ sede, index, barbieri, aperta, onToggle }: any) {
             <Text style={st.detailIcon}>🕐</Text>
             <View>
               <Text style={st.detailLabel}>Orari di apertura</Text>
-              <Text style={st.detailValue}>Mar, Mer, Ven, Sab: 9:00 - 19:00</Text>
+              <Text style={st.detailClosed}>Lunedì: Chiuso</Text>
+              <Text style={st.detailValue}>Martedì: 9:00 - 19:00</Text>
+              <Text style={st.detailValue}>Mercoledì: 9:00 - 19:00</Text>
               <Text style={st.detailValue}>Giovedì: 12:00 - 22:00</Text>
-              <Text style={st.detailClosed}>Domenica e Lunedì: Chiuso</Text>
+              <Text style={st.detailValue}>Venerdì: 9:00 - 19:00</Text>
+              <Text style={st.detailValue}>Sabato: 9:00 - 19:00</Text>
+              <Text style={st.detailClosed}>Domenica: Chiuso</Text>
             </View>
           </View>
 
