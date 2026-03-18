@@ -162,6 +162,7 @@ export default function SceltaData() {
           </View>
           <View style={styles.calendarContainer}>
             <Calendar
+              firstDay={1}
               minDate={dataOggiString} maxDate={dataMassimaString}
               onDayPress={(day: any) => setDataSelezionata(day.dateString)}
               markedDates={getMarkedDates()}
