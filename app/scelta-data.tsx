@@ -130,9 +130,10 @@ export default function SceltaData() {
 
   const getMarkedDates = () => {
     const marked: any = {};
-    // Genera 365 giorni di date disabilitate per Lun e Dom - copre qualsiasi scenario
     const d = new Date(dataOggiString);
-    for (let i = 0; i < 365; i++) {
+    const fine = new Date(dataMassimaString);
+    fine.setDate(fine.getDate() + 60);
+    while (d <= fine) {
       if (d.getDay() === 0 || d.getDay() === 1) {
         marked[d.toISOString().split('T')[0]] = { disabled: true, disableTouchEvent: true };
       }
