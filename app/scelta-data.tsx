@@ -72,7 +72,7 @@ export default function SceltaData() {
     setLoadingOrari(true);
     setOraSelezionata('');
 
-    fetch(`${BACKEND_URL}/api/orari-disponibili?barbiere_id=${barbiereSelezionato.id}&data=${dataSelezionata}`)
+    fetch(`${BACKEND_URL}/api/orari-disponibili?barbiere_id=${barbiereSelezionato.id}&data=${dataSelezionata}&servizio_id=${servizio_id}`)
       .then(res => res.json())
       .then(data => {
         setOrariDisponibili(data);
