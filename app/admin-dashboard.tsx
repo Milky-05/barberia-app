@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [barbieri, setBarbieri] = useState<any[]>([]);
   const [servizi, setServizi] = useState<any[]>([]);
   const [filtroBarbiere, setFiltroBarbiere] = useState<number|null>(null);
+  const [showFiltri, setShowFiltri] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCalendario, setShowCalendario] = useState(false);
   const [showAggiungi, setShowAggiungi] = useState(false);
@@ -57,6 +58,7 @@ export default function AdminDashboard() {
   const caricaDati = async () => {
     try { const t = await AsyncStorage.getItem('token'); const u = JSON.parse(await AsyncStorage.getItem('utente') || '{}'); if (!t) { router.replace('/'); return; } setToken(t); setUtente(u); setEditNome(u.nome || '');
       const resSedi = await fetch(`${BACKEND_URL}/api/sedi`); const ds = await resSedi.json(); setSedi(ds); if (ds.length > 0) setSedeCorrente(ds[0].id);
+      setFiltroBarbiere(u.id); // Default: i propri appuntamenti
       const resServ = await fetch(`${BACKEND_URL}/api/servizi`); setServizi(await resServ.json()); setLoading(false);
     } catch (err) { router.replace('/'); }
   };
@@ -88,7 +90,7 @@ export default function AdminDashboard() {
           <View style={{flexDirection:'row',gap:8}}><Pressable style={st.headerBtn} onPress={apriProfilo}><Text style={{fontSize:18}}>👤</Text></Pressable><Pressable style={st.headerBtnOut} onPress={logout}><Text style={{color:'#888',fontSize:13}}>Esci</Text></Pressable></View>
         </Animated.View>
 
-        <View style={st.sedeRow}>{sedi.map(sede => (<Pressable key={sede.id} style={[st.sedeTab, sedeCorrente===sede.id && st.sedeTabA]} onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(null); }}><Text style={[st.sedeTabText, sedeCorrente===sede.id && st.sedeTabTextA]}>{sede.nome}</Text></Pressable>))}</View>
+        <View style={st.sedeRow}>{sedi.map(sede => (<Pressable key={sede.id} style={[st.sedeTab, sedeCorrente===sede.id && st.sedeTabA]} onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(utente?.id); setShowFiltri(false); }}><Text style={[st.sedeTabText, sedeCorrente===sede.id && st.sedeTabTextA]}>{sede.nome}</Text></Pressable>))}</View>
 
         <View style={st.statRow}><View style={st.statCard}><Text style={st.statVal}>{attivi.length}</Text><Text style={st.statLbl}>Appuntamenti</Text></View></View>
 
@@ -97,9 +99,26 @@ export default function AdminDashboard() {
         {showCalendario && (<View style={st.calBox}><Calendar firstDay={1} current={dataCorrente} onDayPress={(day: any) => { setDataCorrente(day.dateString); setShowCalendario(false); }} markedDates={{ [dataCorrente]: { selected: true, selectedColor: '#D4AF37' } }} theme={{ backgroundColor:'#0A0A0A', calendarBackground:'#141414', textSectionTitleColor:'#D4AF37', selectedDayBackgroundColor:'#D4AF37', selectedDayTextColor:'#0A0A0A', todayTextColor:'#D4AF37', dayTextColor:'#FFF', textDisabledColor:'#333', monthTextColor:'#D4AF37', arrowColor:'#D4AF37', textMonthFontWeight:'bold' }} /></View>)}
 
         <Text style={st.secTitle}>— Barbieri</Text>
-        <View style={st.filtriWrap}><Pressable style={[st.chip, !filtroBarbiere && st.chipA]} onPress={() => setFiltroBarbiere(null)}><Text style={[st.chipText, !filtroBarbiere && st.chipTextA]}>Tutti</Text></Pressable>
-          {barbieri.map(b => (<Pressable key={b.id} style={[st.chip, filtroBarbiere===b.id && st.chipA, b.assente && {opacity:0.4}]} onPress={() => setFiltroBarbiere(b.id)}><Text style={[st.chipText, filtroBarbiere===b.id && st.chipTextA]}>{b.nome}{b.assente?' 🔴':''}</Text></Pressable>))}
-        </View>
+        <Pressable style={st.dataBtn} onPress={() => setShowFiltri(!showFiltri)}>
+          <Text style={st.dataBtnText}>💈  {filtroBarbiere === utente?.id ? 'I Miei Appuntamenti' : filtroBarbiere === null ? 'Tutti i Barbieri' : barbieri.find(b=>b.id===filtroBarbiere)?.nome || 'Barbiere'}</Text>
+          <Text style={{color:'#D4AF37',fontSize:14}}>{showFiltri ? '▲' : '▼'}</Text>
+        </Pressable>
+        {showFiltri && (
+          <View style={st.filtriDrop}>
+            <Pressable style={[st.filtroItem, filtroBarbiere === utente?.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(utente?.id); setShowFiltri(false); }}>
+              <Text style={[st.filtroItemText, filtroBarbiere === utente?.id && st.filtroItemTextA]}>📋 I Miei Appuntamenti</Text>
+            </Pressable>
+            <View style={{height:1,backgroundColor:'#1A1A1A',marginVertical:4}} />
+            <Pressable style={[st.filtroItem, filtroBarbiere === null && st.filtroItemA]} onPress={() => { setFiltroBarbiere(null); setShowFiltri(false); }}>
+              <Text style={[st.filtroItemText, filtroBarbiere === null && st.filtroItemTextA]}>👥 Tutti i Barbieri</Text>
+            </Pressable>
+            {barbieri.filter(b => !b.assente && b.id !== utente?.id).map(b => (
+              <Pressable key={b.id} style={[st.filtroItem, filtroBarbiere===b.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(b.id); setShowFiltri(false); }}>
+                <Text style={[st.filtroItemText, filtroBarbiere===b.id && st.filtroItemTextA]}>💈 {b.nome}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         <View style={st.actRow}><Pressable style={st.actGold} onPress={apriModalAggiungi}><Text style={st.actGoldText}>+ Nuovo Appuntamento</Text></Pressable><Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find(b=>!b.assente)?.id||0); setShowAssenza(true); }}><Text style={st.actRedText}>🔴 Assente</Text></Pressable></View>
 
@@ -179,6 +198,11 @@ const st = StyleSheet.create({
   chipA: { borderColor: '#D4AF37', backgroundColor: 'rgba(212,175,55,0.08)' },
   chipText: { color: '#555', fontSize: 13, fontWeight: '600' },
   chipTextA: { color: '#D4AF37' },
+  filtriDrop: { backgroundColor: '#141414', borderRadius: 14, marginTop: 8, borderWidth: 1, borderColor: '#1E1E1E', overflow: 'hidden' },
+  filtroItem: { padding: 14, cursor: 'pointer' as any },
+  filtroItemA: { backgroundColor: 'rgba(212,175,55,0.06)' },
+  filtroItemText: { color: '#888', fontSize: 14, fontWeight: '600' },
+  filtroItemTextA: { color: '#D4AF37' },
   actRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   actGold: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#D4AF37', alignItems: 'center', cursor: 'pointer' as any },
   actGoldText: { color: '#0A0A0A', fontWeight: '800', fontSize: 14 },
