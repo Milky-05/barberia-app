@@ -130,14 +130,18 @@ export default function SceltaData() {
 
   const getMarkedDates = () => {
     const marked: any = {};
-    const d = new Date(dataOggiString);
-    const fine = new Date(dataMassimaString);
-    fine.setDate(fine.getDate() + 60);
-    while (d <= fine) {
-      if (d.getDay() === 0 || d.getDay() === 1) {
-        marked[d.toISOString().split('T')[0]] = { disabled: true, disableTouchEvent: true };
+    // Genera date per i prossimi 80 giorni, disabilita Lun (1) e Dom (0)
+    for (let i = 0; i < 80; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const giorno = d.getDay();
+      if (giorno === 0 || giorno === 1) {
+        const anno = d.getFullYear();
+        const mese = String(d.getMonth() + 1).padStart(2, '0');
+        const gg = String(d.getDate()).padStart(2, '0');
+        const key = `${anno}-${mese}-${gg}`;
+        marked[key] = { disabled: true, disableTouchEvent: true };
       }
-      d.setDate(d.getDate() + 1);
     }
     if (dataSelezionata) marked[dataSelezionata] = { ...marked[dataSelezionata], selected: true, selectedColor: '#D4AF37' };
     return marked;
