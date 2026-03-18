@@ -239,10 +239,11 @@ export default function SceltaData() {
               <View style={styles.chiamataBox}>
                 <Text style={{fontSize: 28, marginBottom: 12}}>📞</Text>
                 <Text style={styles.chiamataTitle}>Solo su chiamata</Text>
-                <Text style={styles.chiamataText}>Per prenotare con Federico il Venerdì e il Sabato, contattaci telefonicamente.</Text>
+                <Text style={styles.chiamataText}>Per prenotare con Federico il {new Date(dataSelezionata).getDay() === 5 ? 'Venerdì' : 'Sabato'}, contatta la sede di {new Date(dataSelezionata).getDay() === 5 ? 'Frascati' : 'Colonna'}.</Text>
                 <View style={styles.chiamataNumero}>
-                  <Text style={styles.chiamataNumeroText}>📞 06 1234567</Text>
+                  <Text style={styles.chiamataNumeroText}>📞 {new Date(dataSelezionata).getDay() === 5 ? '06 7654321' : '06 1234567'}</Text>
                 </View>
+                <Text style={styles.chiamataSede}>📍 Sede {new Date(dataSelezionata).getDay() === 5 ? 'Frascati' : 'Colonna'}</Text>
               </View>
             ) : loadingOrari ? (
               <ActivityIndicator color="#D4AF37" size="small" style={{ marginVertical: 20 }} />
@@ -337,6 +338,7 @@ const styles = StyleSheet.create({
   chiamataText: { color: '#888', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
   chiamataNumero: { backgroundColor: 'rgba(212,175,55,0.1)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
   chiamataNumeroText: { color: '#D4AF37', fontSize: 16, fontWeight: '700' },
+  chiamataSede: { color: '#666', fontSize: 13, marginTop: 10 },
   riepilogo: { 
     backgroundColor: '#141414', borderRadius: 18, padding: 22, marginTop: 28,
     borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)',
