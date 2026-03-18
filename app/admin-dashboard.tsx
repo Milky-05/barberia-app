@@ -45,6 +45,9 @@ export default function AdminDashboard() {
   const [modificaApp, setModificaApp] = useState<any>(null);
   const [modNome, setModNome] = useState('');
   const [modServizio, setModServizio] = useState(0);
+  const [modOra, setModOra] = useState('');
+  const [modOrariDisp, setModOrariDisp] = useState<string[]>([]);
+  const [modLoadingOrari, setModLoadingOrari] = useState(false);
   const [assenzaBarbiere, setAssenzaBarbiere] = useState(0);
   const [assenzaMotivo, setAssenzaMotivo] = useState('');
   const [showProfilo, setShowProfilo] = useState(false);
@@ -89,15 +92,31 @@ export default function AdminDashboard() {
   const salvaModifica = async () => {
     if (!modificaApp) return;
     try {
-      // Aggiorna nome cliente e servizio
+      const body: any = {};
+      if (modNome && modNome !== modificaApp.cliente_nome) body.cliente_nome = modNome;
+      if (modOra && modOra !== modificaApp.ora?.slice(0,5)) body.ora = modOra;
+      // Per il servizio usiamo una cancellazione e ricreazione se cambia
       const res = await fetch(`${BACKEND_URL}/api/admin/prenotazioni/${modificaApp.id}`, { 
         method: 'PATCH', headers: auth(), 
-        body: JSON.stringify({ cliente_nome: modNome || modificaApp.cliente_nome }) 
+        body: JSON.stringify(body) 
       });
       const data = await res.json();
       if (data.success) { setShowModifica(false); setModificaApp(null); caricaPrenotazioni(); msg("Appuntamento modificato!"); }
       else msg(data.error || "Errore");
     } catch (err) { msg("Errore"); }
+  };
+  const caricaOrariModifica = async (barbId: number, servId: number) => {
+    setModLoadingOrari(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/orari-disponibili?barbiere_id=${barbId}&data=${dataCorrente}&servizio_id=${servId}`);
+      const data = await res.json();
+      setModOrariDisp(Array.isArray(data) ? data : []);
+    } catch (err) { setModOrariDisp([]); }
+    setModLoadingOrari(false);
+  };
+  const apriModifica = (app: any) => {
+    setModificaApp(app); setModNome(app.cliente_nome); setModServizio(app.servizio_id || servizi[0]?.id || 0); setModOra(app.ora?.slice(0,5)); setShowModifica(true);
+    caricaOrariModifica(app.barbiere_id, app.servizio_id || servizi[0]?.id || 0);
   };
   const segnaAssente = async () => { if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; } const bN = barbieri.find(b => b.id === assenzaBarbiere)?.nome || ''; if (Platform.OS === 'web') { if (!window.confirm(`Cancellare tutti gli appuntamenti di ${bN}?`)) return; } try { const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-assente`, { method: 'POST', headers: auth(), body: JSON.stringify({ barbiere_id: assenzaBarbiere, motivo: assenzaMotivo || 'Assente' }) }); const data = await res.json(); if (data.success) { msg(data.messaggio); setShowAssenza(false); setAssenzaMotivo(''); caricaBarbieri(); caricaPrenotazioni(); } else msg(data.error); } catch (err) { msg("Errore"); } };
   const riattiva = async (id: number) => { try { const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-presente`, { method: 'POST', headers: auth(), body: JSON.stringify({ barbiere_id: id }) }); const data = await res.json(); if (data.success) { msg("Barbiere riattivato!"); caricaBarbieri(); caricaPrenotazioni(); } else msg(data.error); } catch (err) { msg("Errore"); } };
@@ -200,7 +219,7 @@ export default function AdminDashboard() {
                         <Text style={st.singleServizio}>✂️ {app.servizio_nome}  •  {app.durata_minuti || 40} min</Text>
                       </View>
                       <View style={st.singleBtns}>
-                        <Pressable style={st.singleEditBtn} onPress={() => { setModificaApp(app); setModNome(app.cliente_nome); setModServizio(app.servizio_id || 0); setShowModifica(true); }}>
+                        <Pressable style={st.singleEditBtn} onPress={() => apriModifica(app)}>
                           <Text style={st.singleEditText}>✏️</Text>
                         </Pressable>
                         <Pressable style={st.singleDelBtn} onPress={() => cancella(app.id)}>
@@ -273,17 +292,37 @@ export default function AdminDashboard() {
         <View style={st.mBtns}><Pressable style={st.mCancel} onPress={() => setShowAssenza(false)}><Text style={{color:'#666',fontWeight:'700',fontSize:14}}>Annulla</Text></Pressable><Pressable style={[st.mConfirm,{backgroundColor:'#F44336'}]} onPress={segnaAssente}><Text style={{color:'#FFF',fontWeight:'800',fontSize:14}}>Conferma</Text></Pressable></View>
       </View></View>)}
 
-      {showModifica && modificaApp && (<View style={st.modalOv}><View style={st.modal}>
+      {showModifica && modificaApp && (<View style={st.modalOv}><View style={st.modal}><ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         <Text style={st.mTitle}>✏️ Modifica Appuntamento</Text>
-        <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)} alle {modificaApp.ora?.slice(0,5)}</Text>
+        <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)} • 💈 {modificaApp.barbiere_nome}</Text>
+        
         <Text style={st.mLabel}>NOME CLIENTE</Text>
         <TextInput style={st.mInput} value={modNome} onChangeText={setModNome} placeholder="Nome cliente" placeholderTextColor="#333" />
+        
+        <Text style={st.mLabel}>SERVIZIO</Text>
+        <View style={st.mGrid}>{servizi.map(sv => (
+          <Pressable key={sv.id} style={[st.mChip, modServizio===sv.id && st.mChipA]} onPress={() => { setModServizio(sv.id); caricaOrariModifica(modificaApp.barbiere_id, sv.id); }}>
+            <Text style={[st.mChipText, modServizio===sv.id && st.mChipTextA]}>{sv.nome}</Text>
+          </Pressable>
+        ))}</View>
+
+        <Text style={st.mLabel}>ORARIO</Text>
+        {modLoadingOrari ? <ActivityIndicator color="#D4AF37" size="small" style={{marginVertical:16}} /> : (
+          <View style={st.oGrid}>
+            {/* Includi l'orario attuale anche se risulta occupato (è il suo) */}
+            {[...new Set([modificaApp.ora?.slice(0,5), ...modOrariDisp])].sort().map(o => (
+              <Pressable key={o} style={[st.oBtn, modOra===o && st.oBtnA]} onPress={() => setModOra(o)}>
+                <Text style={[st.oText, modOra===o && st.oTextA]}>{o}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <View style={st.mBtns}>
           <Pressable style={st.mCancel} onPress={() => { setShowModifica(false); setModificaApp(null); }}><Text style={{color:'#666',fontWeight:'700',fontSize:14}}>Annulla</Text></Pressable>
           <Pressable style={st.mConfirm} onPress={salvaModifica}><Text style={{color:'#0A0A0A',fontWeight:'800',fontSize:14}}>Salva</Text></Pressable>
         </View>
-        <Pressable style={[st.mCancel,{marginTop:10,backgroundColor:'rgba(244,67,54,0.08)',borderWidth:1,borderColor:'rgba(244,67,54,0.2)'}]} onPress={() => { setShowModifica(false); cancella(modificaApp.id); }}><Text style={{color:'#F44336',fontWeight:'700',fontSize:14,textAlign:'center'}}>🗑️ Elimina Appuntamento</Text></Pressable>
-      </View></View>)}
+      </ScrollView></View></View>)}
 
       {showProfilo && (<Animated.View style={[st.overlay, { opacity: overlayOp }]} pointerEvents="auto"><Pressable style={{flex:1}} onPress={chiudiProfilo} /></Animated.View>)}
       {showProfilo && (<Animated.View style={[st.sheet, { transform: [{ translateY: sheetAnim }] }]}><View style={st.handle} />
