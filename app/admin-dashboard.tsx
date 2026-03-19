@@ -137,25 +137,34 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
-  // Genera tutti gli orari della giornata
+  // Genera orari della giornata: base 40 min + extra per appuntamenti da 20 min
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
-    if (giorno === 0 || giorno === 1) return []; // Chiuso
+    if (giorno === 0 || giorno === 1) return [];
     const fasce = giorno === 4
-      ? [[720, 1320]] // Giovedì 12:00-22:00
-      : [[540, 720], [900, 1140]]; // Altri 9:00-12:00, 15:00-19:00
-    const orari: string[] = [];
+      ? [[720, 1320]]
+      : [[540, 720], [900, 1140]];
+    // Base: slot ogni 40 min
+    const orariSet = new Set<number>();
     for (const fascia of fasce) {
       let t = fascia[0];
       while (t < fascia[1]) {
-        const h = Math.floor(t / 60).toString().padStart(2, '0');
-        const m = (t % 60).toString().padStart(2, '0');
-        orari.push(`${h}:${m}`);
-        t += 20; // Granularità 20 min
+        orariSet.add(t);
+        t += 40;
       }
     }
-    return orari;
+    // Aggiungi gli orari degli appuntamenti reali (per quelli da 20 min)
+    attivi.forEach((p: any) => {
+      const [h, m] = (p.ora || '').split(':').map(Number);
+      if (!isNaN(h)) orariSet.add(h * 60 + m);
+    });
+    // Converti e ordina
+    return Array.from(orariSet).sort((a, b) => a - b).map(t => {
+      const h = Math.floor(t / 60).toString().padStart(2, '0');
+      const m = (t % 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+    });
   };
   const orariGiornata = getOrariGiornata();
 
@@ -228,7 +237,7 @@ export default function AdminDashboard() {
                       </View>
                     </View>
                   ) : (
-                    <View style={st.singleEmpty}><Text style={st.singleEmptyText}>Libero</Text></View>
+                    <View style={st.singleEmpty}><Text style={st.singleEmptyText}>—</Text></View>
                   )}
                 </View>
               );
