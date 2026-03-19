@@ -147,7 +147,7 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
-  // Genera orari della giornata: base 40 min + extra per appuntamenti da 20 min
+  // Genera orari della giornata: base ogni 40 min + orari reali degli appuntamenti
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
@@ -155,8 +155,8 @@ export default function AdminDashboard() {
     const fasce = giorno === 4
       ? [[720, 1320]]
       : [[540, 720], [900, 1140]];
-    // Base: slot ogni 40 min
     const orariSet = new Set<number>();
+    // Slot base ogni 40 min
     for (const fascia of fasce) {
       let t = fascia[0];
       while (t < fascia[1]) {
@@ -164,12 +164,11 @@ export default function AdminDashboard() {
         t += 40;
       }
     }
-    // Aggiungi gli orari degli appuntamenti reali (per quelli da 20 min)
+    // Aggiungi orari degli appuntamenti reali (per servizi da 20 min)
     attivi.forEach((p: any) => {
       const [h, m] = (p.ora || '').split(':').map(Number);
       if (!isNaN(h)) orariSet.add(h * 60 + m);
     });
-    // Converti e ordina
     return Array.from(orariSet).sort((a, b) => a - b).map(t => {
       const h = Math.floor(t / 60).toString().padStart(2, '0');
       const m = (t % 60).toString().padStart(2, '0');
@@ -415,9 +414,9 @@ const st = StyleSheet.create({
   filtroItemA: { backgroundColor: 'rgba(212,175,55,0.06)' },
   filtroItemText: { color: '#888', fontSize: 14, fontWeight: '600' },
   filtroItemTextA: { color: '#D4AF37' },
-  actRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  actRow: { flexDirection: 'row', gap: 10, marginBottom: 14, marginTop: 6 },
   actRow2: { flexDirection: 'row', marginBottom: 14 },
-  actGold: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#D4AF37', alignItems: 'center', cursor: 'pointer' as any },
+  actGold: { flex: 2, padding: 14, borderRadius: 12, backgroundColor: '#D4AF37', alignItems: 'center', cursor: 'pointer' as any },
   actGoldText: { color: '#0A0A0A', fontWeight: '800', fontSize: 14 },
   actRed: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: 'rgba(244,67,54,0.06)', borderWidth: 1, borderColor: 'rgba(244,67,54,0.2)', alignItems: 'center', cursor: 'pointer' as any },
   actRedText: { color: '#F44336', fontWeight: '700', fontSize: 13 },
