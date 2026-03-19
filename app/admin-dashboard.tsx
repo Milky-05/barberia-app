@@ -56,6 +56,7 @@ export default function AdminDashboard() {
   const [nuovaPw, setNuovaPw] = useState('');
   const [showCambiaPw, setShowCambiaPw] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [nonLetteAdmin, setNonLetteAdmin] = useState(0);
   const sheetAnim = useRef(new Animated.Value(SHEET_H)).current;
   const overlayOp = useRef(new Animated.Value(0)).current;
   const headerOp = useRef(new Animated.Value(0)).current;
@@ -182,7 +183,13 @@ export default function AdminDashboard() {
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         <Animated.View style={[st.header, { opacity: headerOp }]}>
           <View><Text style={st.headerLabel}>AMMINISTRATORE</Text><Text style={st.headerBrand}>BULLDOG BARBER SHOP</Text><Text style={st.headerUser}>💈 {utente?.nome}</Text></View>
-          <View style={{flexDirection:'row',gap:8}}><Pressable style={st.headerBtn} onPress={apriProfilo}><Text style={{fontSize:18}}>👤</Text></Pressable><Pressable style={st.headerBtnOut} onPress={logout}><Text style={{color:'#888',fontSize:13}}>Esci</Text></Pressable></View>
+          <View style={{flexDirection:'row',gap:8}}>
+            <Pressable style={st.headerBtnNotif} onPress={() => { /* TODO: navigare a notifiche admin */ }}>
+              <Text style={{fontSize:18}}>🔔</Text>
+              {nonLetteAdmin > 0 && <View style={st.headerBadge}><Text style={st.headerBadgeText}>{nonLetteAdmin}</Text></View>}
+            </Pressable>
+            <Pressable style={st.headerBtn} onPress={apriProfilo}><Text style={{fontSize:18}}>👤</Text></Pressable>
+          </View>
         </Animated.View>
 
         <View style={st.sedeRow}>{sedi.map(sede => (<Pressable key={sede.id} style={[st.sedeTab, sedeCorrente===sede.id && st.sedeTabA]} onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(utente?.id); setShowFiltri(false); }}><Text style={[st.sedeTabText, sedeCorrente===sede.id && st.sedeTabTextA]}>{sede.nome}</Text></Pressable>))}</View>
@@ -226,7 +233,10 @@ export default function AdminDashboard() {
           </View>
         )}
 
-        <View style={st.actRow}><Pressable style={st.actGold} onPress={apriModalAggiungi}><Text style={st.actGoldText}>+ Nuovo Appuntamento</Text></Pressable><Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find(b=>!b.assente)?.id||0); setShowAssenza(true); }}><Text style={st.actRedText}>🔴 Assente</Text></Pressable></View>
+        <View style={st.actRow}>
+          <Pressable style={st.actGold} onPress={apriModalAggiungi}><Text style={st.actGoldText}>+ Nuovo Appuntamento</Text></Pressable>
+          <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find(b=>!b.assente)?.id||0); setShowAssenza(true); }}><Text style={st.actRedText}>🔴 Assente</Text></Pressable>
+        </View>
 
         {barbieriAssenti.map(b => (<View key={b.id} style={st.absCard}><Text style={st.absText}>🔴 {b.nome} è assente</Text><Pressable style={st.absBtn} onPress={() => riattiva(b.id)}><Text style={st.absBtnText}>Riattiva</Text></Pressable></View>))}
 
@@ -372,7 +382,10 @@ const st = StyleSheet.create({
   headerLabel: { fontSize: 10, fontWeight: '700', color: '#555', letterSpacing: 3 },
   headerBrand: { fontSize: 18, fontWeight: '900', color: '#D4AF37', letterSpacing: 2, marginTop: 2 },
   headerUser: { color: '#666', fontSize: 13, marginTop: 6 },
-  headerBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  headerBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  headerBtnNotif: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1E1E1E', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  headerBadge: { position: 'absolute' as any, top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  headerBadgeText: { color: '#0A0A0A', fontSize: 10, fontWeight: '900' },
   headerBtnOut: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: '#222', cursor: 'pointer' as any },
   sedeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   sedeTab: { flex: 1, padding: 12, borderRadius: 14, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1E1E1E', alignItems: 'center', cursor: 'pointer' as any },
@@ -403,9 +416,10 @@ const st = StyleSheet.create({
   filtroItemText: { color: '#888', fontSize: 14, fontWeight: '600' },
   filtroItemTextA: { color: '#D4AF37' },
   actRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+  actRow2: { flexDirection: 'row', marginBottom: 14 },
   actGold: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#D4AF37', alignItems: 'center', cursor: 'pointer' as any },
   actGoldText: { color: '#0A0A0A', fontWeight: '800', fontSize: 14 },
-  actRed: { padding: 14, borderRadius: 12, backgroundColor: 'rgba(244,67,54,0.06)', borderWidth: 1, borderColor: 'rgba(244,67,54,0.2)', cursor: 'pointer' as any },
+  actRed: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: 'rgba(244,67,54,0.06)', borderWidth: 1, borderColor: 'rgba(244,67,54,0.2)', alignItems: 'center', cursor: 'pointer' as any },
   actRedText: { color: '#F44336', fontWeight: '700', fontSize: 13 },
   absCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(244,67,54,0.04)', borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(244,67,54,0.15)' },
   absText: { color: '#F44336', fontSize: 14, fontWeight: '600' },
