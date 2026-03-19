@@ -65,8 +65,17 @@ export default function AdminDashboard() {
   useEffect(() => { Animated.timing(headerOp, { toValue: 1, duration: 500, useNativeDriver: true }).start(); caricaDati(); }, []);
   const caricaDati = async () => {
     try { const t = await AsyncStorage.getItem('token'); const u = JSON.parse(await AsyncStorage.getItem('utente') || '{}'); if (!t) { router.replace('/'); return; } setToken(t); setUtente(u); setEditNome(u.nome || '');
-      const resSedi = await fetch(`${BACKEND_URL}/api/sedi`); const ds = await resSedi.json(); setSedi(ds); if (ds.length > 0) setSedeCorrente(ds[0].id);
-      setFiltroBarbiere(u.id); // Default: i propri appuntamenti
+      const resSedi = await fetch(`${BACKEND_URL}/api/sedi`); const tutteSedi = await resSedi.json();
+      // Filtra sedi in base a quelle del barbiere
+      const barbiereSediStr = await AsyncStorage.getItem('barbiere_sedi');
+      const barbiereSedi = barbiereSediStr ? JSON.parse(barbiereSediStr) : null;
+      let ds = tutteSedi;
+      if (barbiereSedi && barbiereSedi.length > 0) {
+        const sediIds = barbiereSedi.map((s: any) => s.id);
+        ds = tutteSedi.filter((s: any) => sediIds.includes(s.id));
+      }
+      setSedi(ds); if (ds.length > 0) setSedeCorrente(ds[0].id);
+      setFiltroBarbiere(u.id);
       const resServ = await fetch(`${BACKEND_URL}/api/servizi`); setServizi(await resServ.json()); setLoading(false);
     } catch (err) { router.replace('/'); }
   };

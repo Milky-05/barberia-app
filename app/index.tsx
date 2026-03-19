@@ -51,7 +51,10 @@ export default function Login() {
         const res = await fetch(`${BACKEND_URL}/api/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
-          if (data.utente.ruolo === 'barbiere') router.replace('/admin-dashboard' as any);
+          if (data.utente.ruolo === 'barbiere') {
+            if (data.sedi) await AsyncStorage.setItem('barbiere_sedi', JSON.stringify(data.sedi));
+            router.replace('/admin-dashboard' as any);
+          }
           else router.replace('/home' as any);
           return;
         }
@@ -73,7 +76,15 @@ export default function Login() {
       if (data.success) {
         await AsyncStorage.setItem('token', data.token);
         await AsyncStorage.setItem('utente', JSON.stringify(data.utente));
-        if (data.utente.ruolo === 'barbiere') router.replace('/admin-dashboard' as any);
+        if (data.utente.ruolo === 'barbiere') {
+          // Carica le sedi del barbiere
+          try {
+            const meRes = await fetch(`${BACKEND_URL}/api/auth/me`, { headers: { 'Authorization': `Bearer ${data.token}` } });
+            const meData = await meRes.json();
+            if (meData.sedi) await AsyncStorage.setItem('barbiere_sedi', JSON.stringify(meData.sedi));
+          } catch (err) {}
+          router.replace('/admin-dashboard' as any);
+        }
         else router.replace('/home' as any);
       } else setErrore(data.error);
     } catch (err) { setErrore("Impossibile collegarsi al server"); }
