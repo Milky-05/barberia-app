@@ -190,7 +190,18 @@ export default function AdminDashboard() {
         <View style={st.statRow}><View style={st.statCard}><Text style={st.statVal}>{attivi.length}</Text><Text style={st.statLbl}>Appuntamenti</Text></View></View>
 
         <Text style={st.secTitle}>— Data</Text>
-        <Pressable style={st.dataBtn} onPress={() => setShowCalendario(!showCalendario)}><Text style={st.dataBtnText}>📅  {fmtDataLunga(dataCorrente)}</Text><Text style={{color:'#D4AF37',fontSize:14}}>{showCalendario ? '▲' : '▼'}</Text></Pressable>
+        <View style={st.dataRow}>
+          <Pressable style={st.dataArrow} onPress={() => { const d = new Date(dataCorrente); d.setDate(d.getDate()-1); const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); setDataCorrente(`${y}-${m}-${dd}`); }}>
+            <Text style={st.dataArrowText}>‹</Text>
+          </Pressable>
+          <Pressable style={st.dataCenterBtn} onPress={() => setShowCalendario(!showCalendario)}>
+            <Text style={st.dataCenterText}>📅  {fmtDataLunga(dataCorrente)}</Text>
+            <Text style={{color:'#D4AF37',fontSize:10,marginTop:2}}>{showCalendario ? '▲ chiudi' : '▼ calendario'}</Text>
+          </Pressable>
+          <Pressable style={st.dataArrow} onPress={() => { const d = new Date(dataCorrente); d.setDate(d.getDate()+1); const y = d.getFullYear(); const m = String(d.getMonth()+1).padStart(2,'0'); const dd = String(d.getDate()).padStart(2,'0'); setDataCorrente(`${y}-${m}-${dd}`); }}>
+            <Text style={st.dataArrowText}>›</Text>
+          </Pressable>
+        </View>
         {showCalendario && (<View style={st.calBox}><Calendar firstDay={1} current={dataCorrente} onDayPress={(day: any) => { setDataCorrente(day.dateString); setShowCalendario(false); }} markedDates={{ [dataCorrente]: { selected: true, selectedColor: '#D4AF37' } }} theme={{ backgroundColor:'#0A0A0A', calendarBackground:'#141414', textSectionTitleColor:'#D4AF37', selectedDayBackgroundColor:'#D4AF37', selectedDayTextColor:'#0A0A0A', todayTextColor:'#D4AF37', dayTextColor:'#FFF', textDisabledColor:'#333', monthTextColor:'#D4AF37', arrowColor:'#D4AF37', textMonthFontWeight:'bold' }} /></View>)}
 
         <Text style={st.secTitle}>— Barbieri</Text>
@@ -375,6 +386,11 @@ const st = StyleSheet.create({
   secTitle: { fontSize: 11, fontWeight: '700', color: '#555', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12, marginTop: 20 },
   dataBtn: { backgroundColor: '#141414', borderRadius: 14, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#1E1E1E', cursor: 'pointer' as any },
   dataBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  dataRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  dataArrow: { width: 44, height: 50, borderRadius: 14, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1E1E1E', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' as any },
+  dataArrowText: { color: '#D4AF37', fontSize: 22, fontWeight: '300' },
+  dataCenterBtn: { flex: 1, backgroundColor: '#141414', borderRadius: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#1E1E1E', alignItems: 'center', cursor: 'pointer' as any },
+  dataCenterText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   calBox: { backgroundColor: '#141414', borderRadius: 14, overflow: 'hidden', marginTop: 8, borderWidth: 1, borderColor: '#1E1E1E' },
   filtriWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 12, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1E1E1E', cursor: 'pointer' as any },
