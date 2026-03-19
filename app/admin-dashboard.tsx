@@ -147,7 +147,7 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
-  // Genera orari della giornata: base ogni 40 min + orari reali degli appuntamenti
+  // Genera orari della giornata: dinamici in base agli appuntamenti
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
@@ -155,20 +155,49 @@ export default function AdminDashboard() {
     const fasce = giorno === 4
       ? [[720, 1320]]
       : [[540, 720], [900, 1140]];
+    
+    // Calcola intervalli occupati per TUTTI i barbieri visibili
+    const intervalliOccupati: {inizio: number, fine: number}[] = [];
+    attivi.forEach((p: any) => {
+      const [h, m] = (p.ora || '').split(':').map(Number);
+      if (!isNaN(h)) {
+        const inizio = h * 60 + m;
+        const durata = p.durata_minuti || 40;
+        intervalliOccupati.push({ inizio, fine: inizio + durata });
+      }
+    });
+
     const orariSet = new Set<number>();
-    // Slot base ogni 40 min
+    
     for (const fascia of fasce) {
-      let t = fascia[0];
-      while (t < fascia[1]) {
-        orariSet.add(t);
-        t += 40;
+      let cursore = fascia[0];
+      while (cursore < fascia[1]) {
+        // Controlla se questo slot è durante un appuntamento in corso
+        const occupato = intervalliOccupati.some(occ => 
+          cursore > occ.inizio && cursore < occ.fine
+        );
+        
+        if (!occupato) {
+          orariSet.add(cursore);
+        }
+        
+        // Trova se c'è un appuntamento che inizia qui
+        const appQui = intervalliOccupati.find(occ => occ.inizio === cursore);
+        if (appQui) {
+          // Salta alla fine dell'appuntamento
+          cursore = appQui.fine;
+        } else {
+          cursore += 40;
+        }
       }
     }
-    // Aggiungi orari degli appuntamenti reali (per servizi da 20 min)
+    
+    // Aggiungi anche gli orari esatti degli appuntamenti (per quelli non allineati)
     attivi.forEach((p: any) => {
       const [h, m] = (p.ora || '').split(':').map(Number);
       if (!isNaN(h)) orariSet.add(h * 60 + m);
     });
+
     return Array.from(orariSet).sort((a, b) => a - b).map(t => {
       const h = Math.floor(t / 60).toString().padStart(2, '0');
       const m = (t % 60).toString().padStart(2, '0');
