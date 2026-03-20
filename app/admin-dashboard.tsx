@@ -147,68 +147,46 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
-  // Genera orari per un singolo barbiere (stessa logica del backend)
-  const getOrariPerBarbiere = (barbiereId: number) => {
-    const dt = new Date(dataCorrente);
-    const giorno = dt.getDay();
-    if (giorno === 0 || giorno === 1) return [];
-    const fasce = giorno === 4
-      ? [[720, 1320]]
-      : [[540, 720], [900, 1140]];
-    
-    // Intervalli occupati solo per QUESTO barbiere
-    const intervalliOccupati = attivi
-      .filter(p => p.barbiere_id === barbiereId)
-      .map((p: any) => {
-        const [h, m] = (p.ora || '').split(':').map(Number);
-        const inizio = h * 60 + m;
-        return { inizio, fine: inizio + (p.durata_minuti || 40) };
-      })
-      .sort((a, b) => a.inizio - b.inizio);
-
-    const orari: number[] = [];
-    
-    for (const fascia of fasce) {
-      let cursore = fascia[0];
-      while (cursore < fascia[1]) {
-        // Aggiungi questo orario alla griglia
-        orari.push(cursore);
-        
-        // Trova se c'è un appuntamento che inizia qui
-        const appQui = intervalliOccupati.find(occ => occ.inizio === cursore);
-        if (appQui) {
-          // Salta alla fine dell'appuntamento
-          cursore = appQui.fine;
-        } else {
-          // Slot libero, avanza di 40 min
-          cursore += 40;
-        }
-      }
-    }
-    
-    return orari;
-  };
-
-  // Genera la griglia orari combinata per tutti i barbieri visibili
+  // Griglia FISSA ogni 20 min basata sugli orari di apertura
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
     if (giorno === 0 || giorno === 1) return [];
-    
-    const orariSet = new Set<number>();
-    
-    // Per ogni barbiere visibile, calcola i suoi orari
-    barbieriTabella.forEach(b => {
-      getOrariPerBarbiere(b.id).forEach(o => orariSet.add(o));
-    });
-    
-    return Array.from(orariSet).sort((a, b) => a - b).map(t => {
-      const h = Math.floor(t / 60).toString().padStart(2, '0');
-      const m = (t % 60).toString().padStart(2, '0');
-      return `${h}:${m}`;
-    });
+    const fasce = giorno === 4
+      ? [[720, 1320]] // Giovedì 12:00-22:00
+      : [[540, 720], [900, 1140]]; // Altri 9:00-12:00, 15:00-19:00
+    const orari: string[] = [];
+    for (const fascia of fasce) {
+      let t = fascia[0];
+      while (t < fascia[1]) {
+        const h = Math.floor(t / 60).toString().padStart(2, '0');
+        const m = (t % 60).toString().padStart(2, '0');
+        orari.push(`${h}:${m}`);
+        t += 20;
+      }
+    }
+    return orari;
   };
   const orariGiornata = getOrariGiornata();
+
+  // Per ogni barbiere, calcola lo stato di ogni slot (libero, inizio appuntamento, continuazione)
+  const getSlotStato = (barbiereId: number, ora: string) => {
+    const appBarb = attivi.filter(p => p.barbiere_id === barbiereId);
+    // Controlla se un appuntamento INIZIA in questo slot
+    const appInizio = appBarb.find((p: any) => p.ora?.slice(0,5) === ora);
+    if (appInizio) return { tipo: 'inizio', app: appInizio };
+    // Controlla se questo slot è OCCUPATO da un appuntamento che è iniziato prima (servizio 40 min)
+    const [h, m] = ora.split(':').map(Number);
+    const oraMin = h * 60 + m;
+    const appContinua = appBarb.find((p: any) => {
+      const [ah, am] = (p.ora || '').split(':').map(Number);
+      const appInizio = ah * 60 + am;
+      const appFine = appInizio + (p.durata_minuti || 40);
+      return oraMin > appInizio && oraMin < appFine;
+    });
+    if (appContinua) return { tipo: 'continua', app: appContinua };
+    return { tipo: 'libero', app: null };
+  };
 
   return (
     <SafeAreaView style={st.container}>
@@ -279,12 +257,18 @@ export default function AdminDashboard() {
           // VISTA SINGOLO BARBIERE - full width
           <View>
             {orariGiornata.map(ora => {
-              const app = prenotazioniPerBarbiere[0].appuntamenti.find((p: any) => p.ora?.slice(0,5) === ora);
+              const stato = getSlotStato(prenotazioniPerBarbiere[0].id, ora);
+              // Nascondi slot "continua" - è coperto dalla card sopra
+              if (stato.tipo === 'continua') return null;
+              const app = stato.tipo === 'inizio' ? stato.app : null;
+              const is40 = app && (app.durata_minuti || 40) >= 40;
               return (
-                <View key={ora} style={[st.singleRow, app && st.singleRowOcc]}>
-                  <View style={st.singleOraBox}><Text style={[st.singleOra, !app && {color:'#333'}]}>{ora}</Text></View>
+                <View key={ora} style={[st.singleRow, app && st.singleRowOcc, is40 && st.singleRowDouble]}>
+                  <View style={[st.singleOraBox, is40 && st.singleOraBoxDouble]}>
+                    <Text style={[st.singleOra, !app && {color:'#333'}]}>{ora}</Text>
+                  </View>
                   {app ? (
-                    <View style={st.singleApp}>
+                    <View style={[st.singleApp, is40 && st.singleAppDouble]}>
                       <View style={{flex:1}}>
                         <Text style={st.singleCliente}>{app.cliente_nome}</Text>
                         <Text style={st.singleServizio}>✂️ {app.servizio_nome}  •  {app.durata_minuti || 40} min</Text>
@@ -315,31 +299,35 @@ export default function AdminDashboard() {
                   <View key={b.id} style={st.tblBarbCol}><Text style={st.tblBarbName}>💈 {b.nome}</Text></View>
                 ))}
               </View>
-              {orariGiornata.map(ora => {
-                const haApp = prenotazioniPerBarbiere.some(b => b.appuntamenti.some((p: any) => p.ora?.slice(0,5) === ora));
-                return (
-                  <View key={ora} style={[st.tblRow, haApp && st.tblRowOccupata]}>
-                    <View style={st.tblOraCol}><Text style={[st.tblOraText, !haApp && {color:'#333'}]}>{ora}</Text></View>
-                    {prenotazioniPerBarbiere.map(b => {
-                      const app = b.appuntamenti.find((p: any) => p.ora?.slice(0,5) === ora);
-                      return (
-                        <View key={b.id} style={st.tblCell}>
-                          {app ? (
-                            <View style={st.tblAppCard}>
-                              <Text style={st.tblAppCliente}>{app.cliente_nome}</Text>
-                              <Text style={st.tblAppServizio}>{app.servizio_nome}</Text>
-                              <Text style={st.tblAppDurata}>{app.durata_minuti || 40} min</Text>
-                              <Pressable style={st.tblAppDel} onPress={() => cancella(app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
-                            </View>
-                          ) : (
-                            <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
-                          )}
-                        </View>
-                      );
-                    })}
+              {orariGiornata.map(ora => (
+                <View key={ora} style={st.tblRow}>
+                  <View style={st.tblOraCol}>
+                    <Text style={[st.tblOraText, !prenotazioniPerBarbiere.some(b => {
+                      const s = getSlotStato(b.id, ora);
+                      return s.tipo === 'inizio';
+                    }) && {color:'#333'}]}>{ora}</Text>
                   </View>
-                );
-              })}
+                  {prenotazioniPerBarbiere.map(b => {
+                    const stato = getSlotStato(b.id, ora);
+                    return (
+                      <View key={b.id} style={st.tblCell}>
+                        {stato.tipo === 'inizio' ? (
+                          <View style={[st.tblAppCard, (stato.app.durata_minuti || 40) >= 40 && st.tblAppCardDouble]}>
+                            <Text style={st.tblAppCliente}>{stato.app.cliente_nome}</Text>
+                            <Text style={st.tblAppServizio}>{stato.app.servizio_nome}</Text>
+                            <Text style={st.tblAppDurata}>{stato.app.durata_minuti || 40} min</Text>
+                            <Pressable style={st.tblAppDel} onPress={() => cancella(stato.app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
+                          </View>
+                        ) : stato.tipo === 'continua' ? (
+                          <View style={{height:1}} />
+                        ) : (
+                          <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
           </ScrollView>
         )}
@@ -482,6 +470,7 @@ const st = StyleSheet.create({
   tblOraText: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' },
   tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' },
+  tblAppCardDouble: { minHeight: 90 },
   tblAppCliente: { color: '#FFF', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   tblAppServizio: { color: '#888', fontSize: 11 },
   tblAppDurata: { color: '#555', fontSize: 10, marginTop: 2 },
@@ -489,12 +478,17 @@ const st = StyleSheet.create({
   tblAppDelText: { color: '#F44336', fontSize: 10, fontWeight: '700' },
   tblEmpty: { alignItems: 'center', justifyContent: 'center', height: 50 },
   tblEmptyText: { color: '#222', fontSize: 16 },
+  tblBlockedCell: { backgroundColor: 'rgba(212,175,55,0.04)', borderRadius: 8, padding: 6, borderLeftWidth: 3, borderLeftColor: 'rgba(212,175,55,0.2)', justifyContent: 'center', height: 50 },
+  tblBlockedText: { color: '#444', fontSize: 10, fontStyle: 'italic', textAlign: 'center' },
   // Singolo barbiere full width
   singleRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 60, paddingVertical: 6 },
+  singleRowDouble: { minHeight: 110 },
   singleRowOcc: { backgroundColor: 'rgba(212,175,55,0.02)' },
   singleOraBox: { width: 60, alignItems: 'center', justifyContent: 'center' },
+  singleOraBoxDouble: { alignSelf: 'flex-start', paddingTop: 12 },
   singleOra: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   singleApp: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, padding: 12, marginLeft: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37' },
+  singleAppDouble: { minHeight: 90, alignItems: 'center' },
   singleCliente: { color: '#FFF', fontSize: 15, fontWeight: '700', marginBottom: 2 },
   singleServizio: { color: '#888', fontSize: 12 },
   singleBtns: { flexDirection: 'row', gap: 8, marginLeft: 10 },
@@ -504,6 +498,9 @@ const st = StyleSheet.create({
   singleDelText: { fontSize: 14 },
   singleEmpty: { flex: 1, marginLeft: 8, paddingVertical: 8 },
   singleEmptyText: { color: '#222', fontSize: 13 },
+  singleRowBlocked: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 44, paddingVertical: 2 },
+  singleBlockedBar: { flex: 1, marginLeft: 8, backgroundColor: 'rgba(212,175,55,0.04)', borderRadius: 8, padding: 8, borderLeftWidth: 3, borderLeftColor: 'rgba(212,175,55,0.2)' },
+  singleBlockedText: { color: '#444', fontSize: 12, fontStyle: 'italic' },
   listCont: { gap: 8 },
   listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1E1E1E', gap: 12 },
   listOraBox: { width: 56, height: 56, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.08)', alignItems: 'center', justifyContent: 'center' },
