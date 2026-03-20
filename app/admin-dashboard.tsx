@@ -147,63 +147,14 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
-  // Genera orari della giornata: dinamici in base agli appuntamenti
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
     if (giorno === 0 || giorno === 1) return [];
-    const fasce = giorno === 4
-      ? [[720, 1320]]
-      : [[540, 720], [900, 1140]];
-    
-    // Calcola intervalli occupati per TUTTI i barbieri visibili
-    const intervalliOccupati: {inizio: number, fine: number}[] = [];
-    attivi.forEach((p: any) => {
-      const [h, m] = (p.ora || '').split(':').map(Number);
-      if (!isNaN(h)) {
-        const inizio = h * 60 + m;
-        const durata = p.durata_minuti || 40;
-        intervalliOccupati.push({ inizio, fine: inizio + durata });
-      }
-    });
-
-    const orariSet = new Set<number>();
-    
-    for (const fascia of fasce) {
-      let cursore = fascia[0];
-      while (cursore < fascia[1]) {
-        // Controlla se questo slot è durante un appuntamento in corso
-        const occupato = intervalliOccupati.some(occ => 
-          cursore > occ.inizio && cursore < occ.fine
-        );
-        
-        if (!occupato) {
-          orariSet.add(cursore);
-        }
-        
-        // Trova se c'è un appuntamento che inizia qui
-        const appQui = intervalliOccupati.find(occ => occ.inizio === cursore);
-        if (appQui) {
-          // Salta alla fine dell'appuntamento
-          cursore = appQui.fine;
-        } else {
-          cursore += 40;
-        }
-      }
-    }
-    
-    // Aggiungi anche gli orari esatti degli appuntamenti (per quelli non allineati)
-    attivi.forEach((p: any) => {
-      const [h, m] = (p.ora || '').split(':').map(Number);
-      if (!isNaN(h)) orariSet.add(h * 60 + m);
-    });
-
-    return Array.from(orariSet).sort((a, b) => a - b).map(t => {
-      const h = Math.floor(t / 60).toString().padStart(2, '0');
-      const m = (t % 60).toString().padStart(2, '0');
-      return `${h}:${m}`;
-    });
+    if (giorno === 4) return ["12:00","12:40","13:20","14:00","14:40","15:20","16:00","16:40","17:20","18:00","18:40","19:20","20:00","20:40","21:20"];
+    return ["09:00","09:40","10:20","11:00","11:40","15:00","15:40","16:20","17:00","17:40","18:20"];
   };
+  
   const orariGiornata = getOrariGiornata();
 
   return (
