@@ -147,14 +147,67 @@ export default function AdminDashboard() {
   
   const prenotazioniPerBarbiere = barbieriTabella.map(b => ({ ...b, appuntamenti: attivi.filter(p => p.barbiere_id === b.id).sort((a: any, bb: any) => a.ora.localeCompare(bb.ora)) }));
 
+  // Genera orari per un singolo barbiere (stessa logica del backend)
+  const getOrariPerBarbiere = (barbiereId: number) => {
+    const dt = new Date(dataCorrente);
+    const giorno = dt.getDay();
+    if (giorno === 0 || giorno === 1) return [];
+    const fasce = giorno === 4
+      ? [[720, 1320]]
+      : [[540, 720], [900, 1140]];
+    
+    // Intervalli occupati solo per QUESTO barbiere
+    const intervalliOccupati = attivi
+      .filter(p => p.barbiere_id === barbiereId)
+      .map((p: any) => {
+        const [h, m] = (p.ora || '').split(':').map(Number);
+        const inizio = h * 60 + m;
+        return { inizio, fine: inizio + (p.durata_minuti || 40) };
+      })
+      .sort((a, b) => a.inizio - b.inizio);
+
+    const orari: number[] = [];
+    
+    for (const fascia of fasce) {
+      let cursore = fascia[0];
+      while (cursore < fascia[1]) {
+        // Aggiungi questo orario alla griglia
+        orari.push(cursore);
+        
+        // Trova se c'è un appuntamento che inizia qui
+        const appQui = intervalliOccupati.find(occ => occ.inizio === cursore);
+        if (appQui) {
+          // Salta alla fine dell'appuntamento
+          cursore = appQui.fine;
+        } else {
+          // Slot libero, avanza di 40 min
+          cursore += 40;
+        }
+      }
+    }
+    
+    return orari;
+  };
+
+  // Genera la griglia orari combinata per tutti i barbieri visibili
   const getOrariGiornata = () => {
     const dt = new Date(dataCorrente);
     const giorno = dt.getDay();
     if (giorno === 0 || giorno === 1) return [];
-    if (giorno === 4) return ["12:00","12:40","13:20","14:00","14:40","15:20","16:00","16:40","17:20","18:00","18:40","19:20","20:00","20:40","21:20"];
-    return ["09:00","09:40","10:20","11:00","11:40","15:00","15:40","16:20","17:00","17:40","18:20"];
+    
+    const orariSet = new Set<number>();
+    
+    // Per ogni barbiere visibile, calcola i suoi orari
+    barbieriTabella.forEach(b => {
+      getOrariPerBarbiere(b.id).forEach(o => orariSet.add(o));
+    });
+    
+    return Array.from(orariSet).sort((a, b) => a - b).map(t => {
+      const h = Math.floor(t / 60).toString().padStart(2, '0');
+      const m = (t % 60).toString().padStart(2, '0');
+      return `${h}:${m}`;
+    });
   };
-  
   const orariGiornata = getOrariGiornata();
 
   return (
