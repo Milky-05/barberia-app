@@ -256,35 +256,46 @@ export default function AdminDashboard() {
         ) : prenotazioniPerBarbiere.length === 1 ? (
           // VISTA SINGOLO BARBIERE - full width
           <View>
-            {orariGiornata.map(ora => {
-              const stato = getSlotStato(prenotazioniPerBarbiere[0].id, ora);
-              if (stato.tipo === 'continua') {
-                // Slot bloccato — parte bassa della card unificata
-                return (
-                  <View key={ora} style={st.singleRowContinua}>
-                    <View style={st.singleOraBox}><Text style={[st.singleOra, {color:'#1E1E1E'}]}>{ora}</Text></View>
-                    <View style={st.singleContinuaBar} />
+            {(() => {
+              const barbId = prenotazioniPerBarbiere[0].id;
+              // Pre-processa: salta gli slot "continua" e raddoppia l'altezza degli "inizio 40min"
+              const righe: {ora: string, tipo: 'libero'|'app20'|'app40', app?: any}[] = [];
+              const skipSet = new Set<string>();
+              
+              orariGiornata.forEach(ora => {
+                if (skipSet.has(ora)) return;
+                const stato = getSlotStato(barbId, ora);
+                if (stato.tipo === 'inizio') {
+                  const dur = stato.app.durata_minuti || 40;
+                  if (dur >= 40) {
+                    // Trova lo slot successivo e marcalo come da saltare
+                    const idx = orariGiornata.indexOf(ora);
+                    if (idx + 1 < orariGiornata.length) skipSet.add(orariGiornata[idx + 1]);
+                    righe.push({ ora, tipo: 'app40', app: stato.app });
+                  } else {
+                    righe.push({ ora, tipo: 'app20', app: stato.app });
+                  }
+                } else if (stato.tipo === 'libero') {
+                  righe.push({ ora, tipo: 'libero' });
+                }
+              });
+
+              return righe.map(r => (
+                <View key={r.ora} style={[st.singleRow, r.app && st.singleRowOcc, r.tipo === 'app40' && {minHeight: 110}]}>
+                  <View style={[st.singleOraBox, r.tipo === 'app40' && {alignSelf:'flex-start' as any, paddingTop:16}]}>
+                    <Text style={[st.singleOra, !r.app && {color:'#333'}]}>{r.ora}</Text>
                   </View>
-                );
-              }
-              const app = stato.tipo === 'inizio' ? stato.app : null;
-              const is40 = app && (app.durata_minuti || 40) >= 40;
-              return (
-                <View key={ora} style={[st.singleRow, app && st.singleRowOcc, is40 && {borderBottomWidth:0}]}>
-                  <View style={st.singleOraBox}>
-                    <Text style={[st.singleOra, !app && {color:'#333'}]}>{ora}</Text>
-                  </View>
-                  {app ? (
-                    <View style={[st.singleApp, is40 && {borderBottomLeftRadius:0, borderBottomRightRadius:0, marginBottom:0}]}>
+                  {r.app ? (
+                    <View style={[st.singleApp, r.tipo === 'app40' && {minHeight: 95}]}>
                       <View style={{flex:1}}>
-                        <Text style={st.singleCliente}>{app.cliente_nome}</Text>
-                        <Text style={st.singleServizio}>✂️ {app.servizio_nome}  •  {app.durata_minuti || 40} min</Text>
+                        <Text style={st.singleCliente}>{r.app.cliente_nome}</Text>
+                        <Text style={st.singleServizio}>✂️ {r.app.servizio_nome}  •  {r.app.durata_minuti || 40} min</Text>
                       </View>
                       <View style={st.singleBtns}>
-                        <Pressable style={st.singleEditBtn} onPress={() => apriModifica(app)}>
+                        <Pressable style={st.singleEditBtn} onPress={() => apriModifica(r.app)}>
                           <Text style={st.singleEditText}>✏️</Text>
                         </Pressable>
-                        <Pressable style={st.singleDelBtn} onPress={() => cancella(app.id)}>
+                        <Pressable style={st.singleDelBtn} onPress={() => cancella(r.app.id)}>
                           <Text style={st.singleDelText}>🗑️</Text>
                         </Pressable>
                       </View>
@@ -293,8 +304,8 @@ export default function AdminDashboard() {
                     <View style={st.singleEmpty}><Text style={st.singleEmptyText}>—</Text></View>
                   )}
                 </View>
-              );
-            })}
+              ));
+            })()}
           </View>
         ) : (
           // VISTA MULTI BARBIERE - tabella con scroll orizzontale
@@ -306,35 +317,81 @@ export default function AdminDashboard() {
                   <View key={b.id} style={st.tblBarbCol}><Text style={st.tblBarbName}>💈 {b.nome}</Text></View>
                 ))}
               </View>
-              {orariGiornata.map(ora => (
-                <View key={ora} style={st.tblRow}>
-                  <View style={st.tblOraCol}>
-                    <Text style={[st.tblOraText, !prenotazioniPerBarbiere.some(b => {
-                      const s = getSlotStato(b.id, ora);
-                      return s.tipo === 'inizio';
-                    }) && {color:'#333'}]}>{ora}</Text>
-                  </View>
-                  {prenotazioniPerBarbiere.map(b => {
-                    const stato = getSlotStato(b.id, ora);
-                    return (
-                      <View key={b.id} style={st.tblCell}>
-                        {stato.tipo === 'inizio' ? (
-                          <View style={[st.tblAppCard, (stato.app.durata_minuti || 40) >= 40 && st.tblAppCardDouble]}>
-                            <Text style={st.tblAppCliente}>{stato.app.cliente_nome}</Text>
-                            <Text style={st.tblAppServizio}>{stato.app.servizio_nome}</Text>
-                            <Text style={st.tblAppDurata}>{stato.app.durata_minuti || 40} min</Text>
-                            <Pressable style={st.tblAppDel} onPress={() => cancella(stato.app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
-                          </View>
-                        ) : stato.tipo === 'continua' ? (
-                          <View style={{height:1}} />
-                        ) : (
-                          <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
-                        )}
+              {(() => {
+                // Pre-processa per multi barbiere: per ogni riga, calcola l'altezza necessaria
+                // Se QUALSIASI barbiere ha un app da 40 min che inizia in questo slot, la riga è doppia
+                // e lo slot successivo viene inglobato
+                const skipSet = new Set<string>();
+                
+                return orariGiornata.map(ora => {
+                  if (skipSet.has(ora)) return null;
+                  
+                  // Controlla se qualche barbiere ha un app 40min che inizia qui
+                  const has40 = prenotazioniPerBarbiere.some(b => {
+                    const s = getSlotStato(b.id, ora);
+                    return s.tipo === 'inizio' && (s.app.durata_minuti || 40) >= 40;
+                  });
+                  
+                  // Se c'è un 40min, questa riga è doppia e skippiamo la prossima
+                  let nextOra = '';
+                  if (has40) {
+                    const idx = orariGiornata.indexOf(ora);
+                    if (idx + 1 < orariGiornata.length) {
+                      nextOra = orariGiornata[idx + 1];
+                      skipSet.add(nextOra);
+                    }
+                  }
+                  
+                  const haApp = prenotazioniPerBarbiere.some(b => getSlotStato(b.id, ora).tipo === 'inizio');
+                  
+                  return (
+                    <View key={ora} style={[st.tblRow, has40 && {minHeight: 130}]}>
+                      <View style={[st.tblOraCol, has40 && {justifyContent:'flex-start' as any, paddingTop:10}]}>
+                        <Text style={[st.tblOraText, !haApp && {color:'#333'}]}>{ora}</Text>
+                        {has40 && nextOra ? <Text style={[st.tblOraText, {color:'#222', marginTop:40}]}>{nextOra}</Text> : null}
                       </View>
-                    );
-                  })}
-                </View>
-              ))}
+                      {prenotazioniPerBarbiere.map(b => {
+                        const stato = getSlotStato(b.id, ora);
+                        // Controlla anche se questo barbiere ha un app nello slot successivo (per righe doppie)
+                        const statoNext = has40 && nextOra ? getSlotStato(b.id, nextOra) : null;
+                        
+                        return (
+                          <View key={b.id} style={[st.tblCell, has40 && {justifyContent:'flex-start' as any, paddingTop:6}]}>
+                            {stato.tipo === 'inizio' ? (
+                              <View style={[st.tblAppCard, (stato.app.durata_minuti || 40) >= 40 && {minHeight: 110}]}>
+                                <Text style={st.tblAppCliente}>{stato.app.cliente_nome}</Text>
+                                <Text style={st.tblAppServizio}>{stato.app.servizio_nome}</Text>
+                                <Text style={st.tblAppDurata}>{stato.app.durata_minuti || 40} min</Text>
+                                <Pressable style={st.tblAppDel} onPress={() => cancella(stato.app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
+                              </View>
+                            ) : stato.tipo === 'continua' ? (
+                              // Questo barbiere ha un app in corso (da slot precedente non-40min)
+                              <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
+                            ) : has40 ? (
+                              // Riga doppia ma questo barbiere è libero in entrambi gli slot
+                              <View style={{gap:6, flex:1}}>
+                                <View style={[st.tblEmpty, {flex:1}]}><Text style={st.tblEmptyText}>—</Text></View>
+                                {statoNext && statoNext.tipo === 'inizio' ? (
+                                  <View style={st.tblAppCard}>
+                                    <Text style={st.tblAppCliente}>{statoNext.app.cliente_nome}</Text>
+                                    <Text style={st.tblAppServizio}>{statoNext.app.servizio_nome}</Text>
+                                    <Text style={st.tblAppDurata}>{statoNext.app.durata_minuti || 40} min</Text>
+                                    <Pressable style={st.tblAppDel} onPress={() => cancella(statoNext.app.id)}><Text style={st.tblAppDelText}>✕</Text></Pressable>
+                                  </View>
+                                ) : (
+                                  <View style={[st.tblEmpty, {flex:1}]}><Text style={st.tblEmptyText}>—</Text></View>
+                                )}
+                              </View>
+                            ) : (
+                              <View style={st.tblEmpty}><Text style={st.tblEmptyText}>—</Text></View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                });
+              })()}
             </View>
           </ScrollView>
         )}
@@ -477,7 +534,6 @@ const st = StyleSheet.create({
   tblOraText: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center', overflow: 'visible' as any, zIndex: 1 },
   tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' as any },
-  tblAppCardDouble: { height: 128, zIndex: 10 },
   tblAppCliente: { color: '#FFF', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   tblAppServizio: { color: '#888', fontSize: 11 },
   tblAppDurata: { color: '#555', fontSize: 10, marginTop: 2 },
@@ -490,11 +546,9 @@ const st = StyleSheet.create({
   // Singolo barbiere full width
   singleRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 60, paddingVertical: 6 },
   singleRowOcc: { backgroundColor: 'rgba(212,175,55,0.02)' },
-  singleRowContinua: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 50, paddingVertical: 0, backgroundColor: 'rgba(212,175,55,0.02)' },
   singleOraBox: { width: 60, alignItems: 'center', justifyContent: 'center' },
   singleOra: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   singleApp: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, padding: 12, marginLeft: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37' },
-  singleContinuaBar: { flex: 1, marginLeft: 8, backgroundColor: '#1A1A1A', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, height: 38, borderLeftWidth: 3, borderLeftColor: '#D4AF37', borderTopWidth: 0 },
   singleCliente: { color: '#FFF', fontSize: 15, fontWeight: '700', marginBottom: 2 },
   singleServizio: { color: '#888', fontSize: 12 },
   singleBtns: { flexDirection: 'row', gap: 8, marginLeft: 10 },
