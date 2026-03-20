@@ -258,17 +258,24 @@ export default function AdminDashboard() {
           <View>
             {orariGiornata.map(ora => {
               const stato = getSlotStato(prenotazioniPerBarbiere[0].id, ora);
-              // Nascondi slot "continua" - è coperto dalla card sopra
-              if (stato.tipo === 'continua') return null;
+              if (stato.tipo === 'continua') {
+                // Slot bloccato — parte bassa della card unificata
+                return (
+                  <View key={ora} style={st.singleRowContinua}>
+                    <View style={st.singleOraBox}><Text style={[st.singleOra, {color:'#1E1E1E'}]}>{ora}</Text></View>
+                    <View style={st.singleContinuaBar} />
+                  </View>
+                );
+              }
               const app = stato.tipo === 'inizio' ? stato.app : null;
               const is40 = app && (app.durata_minuti || 40) >= 40;
               return (
-                <View key={ora} style={[st.singleRow, app && st.singleRowOcc, is40 && st.singleRowDouble]}>
-                  <View style={[st.singleOraBox, is40 && st.singleOraBoxDouble]}>
+                <View key={ora} style={[st.singleRow, app && st.singleRowOcc, is40 && {borderBottomWidth:0}]}>
+                  <View style={st.singleOraBox}>
                     <Text style={[st.singleOra, !app && {color:'#333'}]}>{ora}</Text>
                   </View>
                   {app ? (
-                    <View style={[st.singleApp, is40 && st.singleAppDouble]}>
+                    <View style={[st.singleApp, is40 && {borderBottomLeftRadius:0, borderBottomRightRadius:0, marginBottom:0}]}>
                       <View style={{flex:1}}>
                         <Text style={st.singleCliente}>{app.cliente_nome}</Text>
                         <Text style={st.singleServizio}>✂️ {app.servizio_nome}  •  {app.durata_minuti || 40} min</Text>
@@ -465,12 +472,12 @@ const st = StyleSheet.create({
   tblOraHeader: { color: '#555', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
   tblBarbCol: { width: 140, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tblBarbName: { color: '#D4AF37', fontSize: 13, fontWeight: '700' },
-  tblRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 70 },
+  tblRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 70, zIndex: 1 },
   tblRowOccupata: { backgroundColor: 'rgba(212,175,55,0.02)' },
   tblOraText: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
-  tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' },
-  tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' },
-  tblAppCardDouble: { minHeight: 90 },
+  tblCell: { width: 140, paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center', overflow: 'visible' as any, zIndex: 1 },
+  tblAppCard: { backgroundColor: '#1A1A1A', borderRadius: 10, padding: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37', position: 'relative' as any },
+  tblAppCardDouble: { height: 128, zIndex: 10 },
   tblAppCliente: { color: '#FFF', fontSize: 13, fontWeight: '700', marginBottom: 2 },
   tblAppServizio: { color: '#888', fontSize: 11 },
   tblAppDurata: { color: '#555', fontSize: 10, marginTop: 2 },
@@ -482,13 +489,12 @@ const st = StyleSheet.create({
   tblBlockedText: { color: '#444', fontSize: 10, fontStyle: 'italic', textAlign: 'center' },
   // Singolo barbiere full width
   singleRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 60, paddingVertical: 6 },
-  singleRowDouble: { minHeight: 110 },
   singleRowOcc: { backgroundColor: 'rgba(212,175,55,0.02)' },
+  singleRowContinua: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1A1A1A', minHeight: 50, paddingVertical: 0, backgroundColor: 'rgba(212,175,55,0.02)' },
   singleOraBox: { width: 60, alignItems: 'center', justifyContent: 'center' },
-  singleOraBoxDouble: { alignSelf: 'flex-start', paddingTop: 12 },
   singleOra: { color: '#D4AF37', fontSize: 14, fontWeight: '800' },
   singleApp: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, padding: 12, marginLeft: 8, borderLeftWidth: 3, borderLeftColor: '#D4AF37' },
-  singleAppDouble: { minHeight: 90, alignItems: 'center' },
+  singleContinuaBar: { flex: 1, marginLeft: 8, backgroundColor: '#1A1A1A', borderBottomLeftRadius: 12, borderBottomRightRadius: 12, height: 38, borderLeftWidth: 3, borderLeftColor: '#D4AF37', borderTopWidth: 0 },
   singleCliente: { color: '#FFF', fontSize: 15, fontWeight: '700', marginBottom: 2 },
   singleServizio: { color: '#888', fontSize: 12 },
   singleBtns: { flexDirection: 'row', gap: 8, marginLeft: 10 },
