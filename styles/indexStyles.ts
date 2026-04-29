@@ -1,0 +1,134 @@
+// styles/indexStyles.ts
+import { StyleSheet } from "react-native";
+
+export const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  loaderContainer: {
+    flex: 1,
+    backgroundColor: "#0A0A0A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  keyboardView: { flex: 1, backgroundColor: "#0A0A0A" },
+  scroll: {
+    flexGrow: 1,
+    padding: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0A0A0A",
+  },
+
+  logoBox: { alignItems: "center", marginBottom: 16 },
+  logoGlow: {
+    position: "absolute",
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: "#D4AF37",
+    opacity: 0.07,
+  },
+  logoWrap: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 3,
+    borderColor: "#D4AF37",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImg: { width: 112, height: 112 },
+
+  goldLine: {
+    height: 2,
+    backgroundColor: "#D4AF37",
+    marginBottom: 14,
+    borderRadius: 1,
+  },
+  titleBox: { alignItems: "center", marginBottom: 28 },
+  brand: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#D4AF37",
+    letterSpacing: 8,
+  },
+  brandSub: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#D4AF37",
+    letterSpacing: 5,
+    opacity: 0.6,
+    marginTop: 2,
+  },
+
+  formCard: {
+    width: "100%",
+    maxWidth: 400,
+    backgroundColor: "#111",
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  tabRow: {
+    flexDirection: "row",
+    marginBottom: 20,
+    backgroundColor: "#0A0A0A",
+    borderRadius: 12,
+    padding: 3,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 11,
+    alignItems: "center",
+    borderRadius: 10,
+    cursor: "pointer" as any,
+  },
+  tabActive: { backgroundColor: "rgba(212,175,55,0.12)" },
+  tabText: { color: "#444", fontSize: 14, fontWeight: "700" },
+  tabTextActive: { color: "#D4AF37" },
+
+  row: { flexDirection: "row", gap: 10 },
+  halfField: { flex: 1 },
+  label: {
+    color: "#666",
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 5,
+    marginTop: 12,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  input: {
+    backgroundColor: "#0A0A0A",
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+    borderRadius: 12,
+    padding: 14,
+    color: "#FFF",
+    fontSize: 16,
+  },
+
+  errore: {
+    color: "#F44336",
+    fontSize: 12,
+    marginTop: 12,
+    textAlign: "center",
+  },
+  btn: {
+    backgroundColor: "#D4AF37",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+    cursor: "pointer" as any,
+  },
+  btnText: {
+    color: "#0A0A0A",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+
+  footer: { color: "#1A1A1A", fontSize: 10, letterSpacing: 4, marginTop: 30 },
+});

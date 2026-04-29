@@ -1,0 +1,301 @@
+// styles/homeStyles.ts
+import { Dimensions, Platform, StyleSheet } from "react-native";
+
+const { height: SH } = Dimensions.get("window");
+export const SHEET_H = SH * 0.85;
+
+export const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#0A0A0A" },
+  scroll: { padding: 24, paddingBottom: 40 },
+
+  // Header
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 50,
+    marginBottom: 8,
+  },
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  logo: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#D4AF37",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImg: { width: 50, height: 50 },
+  brandText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#D4AF37",
+    letterSpacing: 4,
+  },
+  greeting: { fontSize: 28, fontWeight: "900", color: "#FFF", lineHeight: 34 },
+  greetingName: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#D4AF37",
+    lineHeight: 34,
+  },
+  profileBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#D4AF37",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer" as any,
+  },
+  profileIcon: { fontSize: 18 },
+
+  // Sections
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#555",
+    letterSpacing: 3,
+    textTransform: "uppercase",
+    marginBottom: 14,
+    marginTop: 24,
+  },
+
+  // Main card
+  mainCard: {
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: "#1E1E1E",
+    borderRadius: 20,
+    overflow: "hidden",
+    ...(Platform.OS === "web" ? { cursor: "pointer" } : {}),
+  },
+  mainCardPressed: {
+    borderColor: "rgba(212,175,55,0.4)",
+    transform: [{ scale: 0.98 }],
+  },
+  mainInner: {
+    padding: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  mainIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: "rgba(212,175,55,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mainTitle: { fontSize: 17, fontWeight: "800", color: "#D4AF37" },
+  mainSub: { fontSize: 12, color: "#666", marginTop: 2 },
+  mainArrow: { fontSize: 24, color: "#D4AF37", fontWeight: "300" },
+  mainBar: { height: 3, backgroundColor: "#D4AF37", opacity: 0.6 },
+
+  // Grid
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  gridCard: {
+    width: "48%" as any,
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: "#1E1E1E",
+    borderRadius: 18,
+    padding: 20,
+    ...(Platform.OS === "web" ? { cursor: "pointer" } : {}),
+  },
+  gridCardMsg: {
+    width: "48%" as any,
+    backgroundColor: "#141208",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.2)",
+    borderRadius: 18,
+    padding: 20,
+    ...(Platform.OS === "web" ? { cursor: "pointer" } : {}),
+  },
+  gridCardPressed: {
+    borderColor: "rgba(212,175,55,0.4)",
+    transform: [{ scale: 0.97 }],
+  },
+  gridIcon: { fontSize: 24, marginBottom: 10 },
+  gridTitle: { fontSize: 14, fontWeight: "700", color: "#FFF" },
+  gridTitleGold: { fontSize: 14, fontWeight: "700", color: "#D4AF37" },
+  gridSub: { fontSize: 11, color: "#555", marginTop: 4 },
+  iconRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badge: {
+    backgroundColor: "#D4AF37",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "#0A0A0A", fontSize: 11, fontWeight: "900" },
+
+  // Footer
+  footerBox: { alignItems: "center", paddingTop: 28 },
+  footerLine: {
+    width: 40,
+    height: 2,
+    backgroundColor: "#1E1E1E",
+    marginBottom: 12,
+  },
+  footerText: { color: "#2A2A2A", fontSize: 10, letterSpacing: 4 },
+
+  // Overlay
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    zIndex: 50,
+  },
+
+  // Bottom Sheet
+  sheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#111",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    zIndex: 60,
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#1E1E1E",
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#333",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 20,
+  },
+
+  // Sheet Header
+  sheetHeader: { alignItems: "center", marginBottom: 24 },
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(212,175,55,0.12)",
+    borderWidth: 2,
+    borderColor: "#D4AF37",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  avatarLargeText: { color: "#D4AF37", fontSize: 32, fontWeight: "800" },
+  sheetName: { color: "#FFF", fontSize: 22, fontWeight: "800" },
+  sheetEmail: { color: "#555", fontSize: 14, marginTop: 4 },
+  sheetPhone: { color: "#666", fontSize: 13, marginTop: 4 },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+    marginBottom: 24,
+  },
+  quickBtn: { alignItems: "center", gap: 6, cursor: "pointer" as any },
+  quickIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#222",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickIconDanger: {
+    borderColor: "rgba(244,67,54,0.2)",
+    backgroundColor: "rgba(244,67,54,0.05)",
+  },
+  quickText: { color: "#888", fontSize: 12, fontWeight: "600" },
+
+  // Sections
+  section: {
+    backgroundColor: "#0A0A0A",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  sectionLabel: {
+    color: "#D4AF37",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 2,
+    marginBottom: 14,
+  },
+  fieldRow: { flexDirection: "row", gap: 10 },
+  fieldLabel: {
+    color: "#555",
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 4,
+    marginTop: 10,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  fieldInput: {
+    backgroundColor: "#141414",
+    borderWidth: 1,
+    borderColor: "#1E1E1E",
+    borderRadius: 12,
+    padding: 13,
+    color: "#FFF",
+    fontSize: 15,
+  },
+  btnRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  btnCancel: {
+    flex: 1,
+    padding: 13,
+    borderRadius: 12,
+    backgroundColor: "#1A1A1A",
+    alignItems: "center",
+    cursor: "pointer" as any,
+  },
+  btnCancelText: { color: "#666", fontWeight: "700", fontSize: 14 },
+  btnSave: {
+    flex: 1,
+    padding: 13,
+    borderRadius: 12,
+    backgroundColor: "#D4AF37",
+    alignItems: "center",
+    cursor: "pointer" as any,
+  },
+  btnSaveText: { color: "#0A0A0A", fontWeight: "800", fontSize: 14 },
+
+  // Info
+  infoSection: {
+    backgroundColor: "#0A0A0A",
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#1A1A1A",
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  infoLabel: { color: "#555", fontSize: 14 },
+  infoValue: { color: "#D4AF37", fontSize: 16, fontWeight: "800" },
+  infoDivider: { height: 1, backgroundColor: "#1A1A1A", marginVertical: 8 },
+});
