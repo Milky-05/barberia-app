@@ -15,9 +15,11 @@ import {
 import { supabase } from "../lib/supabase";
 import { s } from "../styles/indexStyles";
 
-type LoginStep = "email" | "magic_sent" | "password" | "register";
+type LoginStep = "email" | "magic_sent" | "password";
+type Modo = "accedi" | "registrati";
 
 export default function Login() {
+  const [modo, setModo] = useState<Modo>("accedi");
   const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,12 +126,18 @@ export default function Login() {
     }
   };
 
+  // Cambia tab e resetta lo stato del form
+  const cambiaModo = (nuovoModo: Modo) => {
+    setModo(nuovoModo);
+    setStep("email");
+    setErrore("");
+    setPassword("");
+  };
+
+  // Tab Accedi — step 1: controlla l'email via RPC
   const controllaEmail = async () => {
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail) {
-      setErrore("Inserisci la tua email");
-      return;
-    }
+    if (!trimmedEmail) { setErrore("Inserisci la tua email"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrore("Email non valida");
       return;
@@ -148,27 +156,28 @@ export default function Login() {
     }
 
     if (role === "not_found") {
-      setStep("register");
+      // Email non trovata → passa alla tab Registrati mantenendo l'email
+      setModo("registrati");
+      setStep("email");
+      setErrore("Email non trovata. Compila i dati per registrarti.");
     } else if (role === "cliente") {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
       await supabase.auth.signInWithOtp({
         email: trimmedEmail,
         options: { emailRedirectTo: origin },
       });
       setStep("magic_sent");
     } else {
+      // admin o super_admin → mostra campo password
       setStep("password");
     }
 
     setLoading(false);
   };
 
+  // Tab Accedi — step 2 (admin/super_admin): accesso con password
   const eseguiLogin = async () => {
-    if (!password) {
-      setErrore("Inserisci la password");
-      return;
-    }
+    if (!password) { setErrore("Inserisci la password"); return; }
     setErrore("");
     setLoading(true);
 
@@ -187,17 +196,21 @@ export default function Login() {
     setLoading(false);
   };
 
+  // Tab Registrati: crea account cliente e invia magic link
   const eseguiRegistrazione = async () => {
-    if (!nome.trim()) {
-      setErrore("Il nome è obbligatorio");
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) { setErrore("Inserisci la tua email"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrore("Email non valida");
       return;
     }
+    if (!nome.trim()) { setErrore("Il nome è obbligatorio"); return; }
     setErrore("");
     setLoading(true);
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
+      email: trimmedEmail,
       options: {
         emailRedirectTo: origin,
         data: {
@@ -256,10 +269,7 @@ export default function Login() {
           overScrollMode="never"
         >
           <Animated.View
-            style={[
-              s.logoBox,
-              { opacity: logoOp, transform: [{ scale: logoScale }] },
-            ]}
+            style={[s.logoBox, { opacity: logoOp, transform: [{ scale: logoScale }] }]}
           >
             <View style={s.logoGlow} />
             <View style={s.logoWrap}>
@@ -272,36 +282,44 @@ export default function Login() {
           </Animated.View>
 
           <Animated.View
-            style={[
-              s.goldLine,
-              {
-                width: lineW.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["0%", "40%"],
-                }),
-              },
-            ]}
+            style={[s.goldLine, { width: lineW.interpolate({ inputRange: [0, 1], outputRange: ["0%", "40%"] }) }]}
           />
 
           <Animated.View
-            style={[
-              s.titleBox,
-              { opacity: titleOp, transform: [{ translateY: titleY }] },
-            ]}
+            style={[s.titleBox, { opacity: titleOp, transform: [{ translateY: titleY }] }]}
           >
             <Text style={s.brand}>BULLDOG</Text>
             <Text style={s.brandSub}>BARBER SHOP</Text>
           </Animated.View>
 
           <Animated.View
-            style={[
-              s.formCard,
-              { opacity: formOp, transform: [{ translateY: formY }] },
-            ]}
+            style={[s.formCard, { opacity: formOp, transform: [{ translateY: formY }] }]}
           >
+            {/* Tabs visibili solo quando non si è ancora inviato il link o inserita la password */}
             {step === "email" && (
+              <View style={s.tabRow}>
+                <Pressable
+                  style={[s.tab, modo === "accedi" && s.tabActive]}
+                  onPress={() => cambiaModo("accedi")}
+                >
+                  <Text style={[s.tabText, modo === "accedi" && s.tabTextActive]}>
+                    Accedi
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[s.tab, modo === "registrati" && s.tabActive]}
+                  onPress={() => cambiaModo("registrati")}
+                >
+                  <Text style={[s.tabText, modo === "registrati" && s.tabTextActive]}>
+                    Registrati
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* ── TAB ACCEDI ── */}
+            {modo === "accedi" && step === "email" && (
               <>
-                <Text style={s.stepTitle}>Accedi o Registrati</Text>
                 <Text style={s.label}>Email</Text>
                 <TextInput
                   style={s.input}
@@ -321,74 +339,27 @@ export default function Login() {
                   onPress={controllaEmail}
                   disabled={loading}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#0A0A0A" size="small" />
-                  ) : (
-                    <Text style={s.btnText}>Continua</Text>
-                  )}
+                  {loading
+                    ? <ActivityIndicator color="#0A0A0A" size="small" />
+                    : <Text style={s.btnText}>Continua</Text>}
                 </Pressable>
               </>
             )}
 
-            {step === "magic_sent" && (
+            {/* ── TAB REGISTRATI ── */}
+            {modo === "registrati" && step === "email" && (
               <>
-                <Text style={s.stepTitle}>Controlla la tua email</Text>
-                <Text style={s.stepDesc}>
-                  Ti abbiamo inviato un link di accesso a{"\n"}
-                  <Text style={{ color: "#D4AF37" }}>{email}</Text>
-                </Text>
-                <Text style={s.stepDesc}>
-                  Clicca il link nell'email per accedere.
-                </Text>
-                <Pressable style={s.btnSecondary} onPress={rinviaLink}>
-                  <Text style={s.btnSecondaryText}>
-                    Non hai ricevuto? Rinvia
-                  </Text>
-                </Pressable>
-                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
-                  <Text style={s.linkBtnText}>← Usa un'altra email</Text>
-                </Pressable>
-              </>
-            )}
-
-            {step === "password" && (
-              <>
-                <Text style={s.stepTitle}>Accedi</Text>
-                <Text style={s.emailDisplay}>{email}</Text>
-                <Text style={s.label}>Password</Text>
+                <Text style={s.label}>Email *</Text>
                 <TextInput
                   style={s.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="La tua password"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="La tua email"
                   placeholderTextColor="#333"
-                  secureTextEntry
-                  onSubmitEditing={eseguiLogin}
-                  returnKeyType="done"
-                  autoFocus
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
                 />
-                {errore ? <Text style={s.errore}>{errore}</Text> : null}
-                <Pressable
-                  style={[s.btn, loading && { opacity: 0.6 }]}
-                  onPress={eseguiLogin}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#0A0A0A" size="small" />
-                  ) : (
-                    <Text style={s.btnText}>Accedi</Text>
-                  )}
-                </Pressable>
-                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
-                  <Text style={s.linkBtnText}>← Torna</Text>
-                </Pressable>
-              </>
-            )}
-
-            {step === "register" && (
-              <>
-                <Text style={s.stepTitle}>Crea il tuo account</Text>
-                <Text style={s.emailDisplay}>{email}</Text>
                 <View style={s.row}>
                   <View style={s.halfField}>
                     <Text style={s.label}>Nome *</Text>
@@ -426,17 +397,66 @@ export default function Login() {
                   onPress={eseguiRegistrazione}
                   disabled={loading}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#0A0A0A" size="small" />
-                  ) : (
-                    <Text style={s.btnText}>Crea Account</Text>
-                  )}
+                  {loading
+                    ? <ActivityIndicator color="#0A0A0A" size="small" />
+                    : <Text style={s.btnText}>Crea Account</Text>}
+                </Pressable>
+              </>
+            )}
+
+            {/* ── STEP PASSWORD (solo admin/super_admin) ── */}
+            {step === "password" && (
+              <>
+                <Text style={s.stepTitle}>Accedi</Text>
+                <Text style={s.emailDisplay}>{email}</Text>
+                <Text style={s.label}>Password</Text>
+                <TextInput
+                  style={s.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="La tua password"
+                  placeholderTextColor="#333"
+                  secureTextEntry
+                  onSubmitEditing={eseguiLogin}
+                  returnKeyType="done"
+                  autoFocus
+                />
+                {errore ? <Text style={s.errore}>{errore}</Text> : null}
+                <Pressable
+                  style={[s.btn, loading && { opacity: 0.6 }]}
+                  onPress={eseguiLogin}
+                  disabled={loading}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#0A0A0A" size="small" />
+                    : <Text style={s.btnText}>Accedi</Text>}
                 </Pressable>
                 <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
                   <Text style={s.linkBtnText}>← Torna</Text>
                 </Pressable>
               </>
             )}
+
+            {/* ── STEP MAGIC LINK INVIATO ── */}
+            {step === "magic_sent" && (
+              <>
+                <Text style={s.stepTitle}>Controlla la tua email</Text>
+                <Text style={s.stepDesc}>
+                  Ti abbiamo inviato un link di accesso a{"\n"}
+                  <Text style={{ color: "#D4AF37" }}>{email}</Text>
+                </Text>
+                <Text style={s.stepDesc}>
+                  Clicca il link nell'email per accedere.
+                </Text>
+                <Pressable style={s.btnSecondary} onPress={rinviaLink}>
+                  <Text style={s.btnSecondaryText}>Non hai ricevuto? Rinvia</Text>
+                </Pressable>
+                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
+                  <Text style={s.linkBtnText}>← Usa un'altra email</Text>
+                </Pressable>
+              </>
+            )}
+
           </Animated.View>
 
           <Text style={s.footer}>PRENOTA IL TUO STILE</Text>
