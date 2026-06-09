@@ -1,5 +1,3 @@
-// app/index.tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -14,14 +12,13 @@ import {
   TextInput,
   View,
 } from "react-native";
-
-// IMPORTIAMO GLI STILI SEPARATI
+import { supabase } from "../lib/supabase";
 import { s } from "../styles/indexStyles";
 
-const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
+type LoginStep = "email" | "magic_sent" | "password" | "register";
 
 export default function Login() {
-  const [modo, setModo] = useState<"login" | "registrazione">("login");
+  const [step, setStep] = useState<LoginStep>("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
@@ -30,6 +27,7 @@ export default function Login() {
   const [errore, setErrore] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const redirecting = useRef(false);
 
   const logoScale = useRef(new Animated.Value(0.5)).current;
   const logoOp = useRef(new Animated.Value(0)).current;
@@ -40,7 +38,24 @@ export default function Login() {
   const formY = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    autoLogin();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        await redirectByRole(session.user.id);
+        return;
+      }
+      setChecking(false);
+      anima();
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        await redirectByRole(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const anima = () => {
@@ -90,112 +105,141 @@ export default function Login() {
     ]).start();
   };
 
-  const autoLogin = async () => {
+  const redirectByRole = async (userId: string) => {
+    if (redirecting.current) return;
+    redirecting.current = true;
     try {
-      const token = await AsyncStorage.getItem("token");
-      if (token) {
-        const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.utente.ruolo === "barbiere") {
-            if (data.sedi)
-              await AsyncStorage.setItem(
-                "barbiere_sedi",
-                JSON.stringify(data.sedi),
-              );
-            router.replace("/admin-dashboard" as any);
-          } else router.replace("/home" as any);
-          return;
-        }
-        await AsyncStorage.removeItem("token");
-        await AsyncStorage.removeItem("utente");
+      const { data } = await supabase
+        .from("profili")
+        .select("ruolo")
+        .eq("id", userId)
+        .single();
+      if (data?.ruolo === "admin" || data?.ruolo === "super_admin") {
+        router.replace("/admin-dashboard" as any);
+      } else {
+        router.replace("/home" as any);
       }
-    } catch (err) {}
-    setChecking(false);
-    anima();
+    } catch {
+      redirecting.current = false;
+    }
   };
 
-  const eseguiLogin = async () => {
-    if (!email || !password) {
-      setErrore("Inserisci email e password");
+  const controllaEmail = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setErrore("Inserisci la tua email");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setErrore("Email non valida");
       return;
     }
     setErrore("");
     setLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        await AsyncStorage.setItem("token", data.token);
-        await AsyncStorage.setItem("utente", JSON.stringify(data.utente));
-        if (data.utente.ruolo === "barbiere") {
-          try {
-            const meRes = await fetch(`${BACKEND_URL}/api/auth/me`, {
-              headers: { Authorization: `Bearer ${data.token}` },
-            });
-            const meData = await meRes.json();
-            if (meData.sedi)
-              await AsyncStorage.setItem(
-                "barbiere_sedi",
-                JSON.stringify(meData.sedi),
-              );
-          } catch (err) {}
-          router.replace("/admin-dashboard" as any);
-        } else router.replace("/home" as any);
-      } else setErrore(data.error);
-    } catch (err) {
-      setErrore("Impossibile collegarsi al server");
+
+    const { data: role, error } = await supabase.rpc("check_user_role", {
+      user_email: trimmedEmail,
+    });
+
+    if (error) {
+      setErrore("Errore di connessione. Riprova.");
+      setLoading(false);
+      return;
     }
+
+    if (role === "not_found") {
+      setStep("register");
+    } else if (role === "cliente") {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+      await supabase.auth.signInWithOtp({
+        email: trimmedEmail,
+        options: { emailRedirectTo: origin },
+      });
+      setStep("magic_sent");
+    } else {
+      setStep("password");
+    }
+
+    setLoading(false);
+  };
+
+  const eseguiLogin = async () => {
+    if (!password) {
+      setErrore("Inserisci la password");
+      return;
+    }
+    setErrore("");
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (error) {
+      setErrore("Password errata o account non trovato");
+      setLoading(false);
+      return;
+    }
+
+    await redirectByRole(data.user.id);
     setLoading(false);
   };
 
   const eseguiRegistrazione = async () => {
-    if (!nome || !email || !password) {
-      setErrore("Nome, email e password sono obbligatori");
-      return;
-    }
-    if (password.length < 6) {
-      setErrore("La password deve avere almeno 6 caratteri");
+    if (!nome.trim()) {
+      setErrore("Il nome è obbligatorio");
       return;
     }
     setErrore("");
     setLoading(true);
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/registrazione`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome,
-          cognome,
-          email: email.trim().toLowerCase(),
-          telefono,
-          password,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        await AsyncStorage.setItem("token", data.token);
-        await AsyncStorage.setItem("utente", JSON.stringify(data.utente));
-        router.replace("/home" as any);
-      } else setErrore(data.error);
-    } catch (err) {
-      setErrore("Impossibile collegarsi al server");
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo: origin,
+        data: {
+          nome: nome.trim(),
+          cognome: cognome.trim(),
+          telefono: telefono.trim(),
+        },
+      },
+    });
+
+    if (error) {
+      setErrore("Errore durante la registrazione. Riprova.");
+      setLoading(false);
+      return;
     }
+
+    setStep("magic_sent");
     setLoading(false);
   };
 
-  if (checking)
+  const rinviaLink = async () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: { emailRedirectTo: origin },
+    });
+    setErrore("Link inviato di nuovo!");
+  };
+
+  const tornaAllaEmail = () => {
+    setStep("email");
+    setPassword("");
+    setErrore("");
+  };
+
+  if (checking) {
     return (
       <View style={s.loaderContainer}>
         <ActivityIndicator color="#D4AF37" size="large" />
       </View>
     );
+  }
 
   return (
     <View style={s.container}>
@@ -255,38 +299,96 @@ export default function Login() {
               { opacity: formOp, transform: [{ translateY: formY }] },
             ]}
           >
-            <View style={s.tabRow}>
-              <Pressable
-                style={[s.tab, modo === "login" && s.tabActive]}
-                onPress={() => {
-                  setModo("login");
-                  setErrore("");
-                }}
-              >
-                <Text style={[s.tabText, modo === "login" && s.tabTextActive]}>
-                  Accedi
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[s.tab, modo === "registrazione" && s.tabActive]}
-                onPress={() => {
-                  setModo("registrazione");
-                  setErrore("");
-                }}
-              >
-                <Text
-                  style={[
-                    s.tabText,
-                    modo === "registrazione" && s.tabTextActive,
-                  ]}
-                >
-                  Registrati
-                </Text>
-              </Pressable>
-            </View>
-
-            {modo === "registrazione" && (
+            {step === "email" && (
               <>
+                <Text style={s.stepTitle}>Accedi o Registrati</Text>
+                <Text style={s.label}>Email</Text>
+                <TextInput
+                  style={s.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="La tua email"
+                  placeholderTextColor="#333"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  onSubmitEditing={controllaEmail}
+                  returnKeyType="next"
+                />
+                {errore ? <Text style={s.errore}>{errore}</Text> : null}
+                <Pressable
+                  style={[s.btn, loading && { opacity: 0.6 }]}
+                  onPress={controllaEmail}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#0A0A0A" size="small" />
+                  ) : (
+                    <Text style={s.btnText}>Continua</Text>
+                  )}
+                </Pressable>
+              </>
+            )}
+
+            {step === "magic_sent" && (
+              <>
+                <Text style={s.stepTitle}>Controlla la tua email</Text>
+                <Text style={s.stepDesc}>
+                  Ti abbiamo inviato un link di accesso a{"\n"}
+                  <Text style={{ color: "#D4AF37" }}>{email}</Text>
+                </Text>
+                <Text style={s.stepDesc}>
+                  Clicca il link nell'email per accedere.
+                </Text>
+                <Pressable style={s.btnSecondary} onPress={rinviaLink}>
+                  <Text style={s.btnSecondaryText}>
+                    Non hai ricevuto? Rinvia
+                  </Text>
+                </Pressable>
+                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
+                  <Text style={s.linkBtnText}>← Usa un'altra email</Text>
+                </Pressable>
+              </>
+            )}
+
+            {step === "password" && (
+              <>
+                <Text style={s.stepTitle}>Accedi</Text>
+                <Text style={s.emailDisplay}>{email}</Text>
+                <Text style={s.label}>Password</Text>
+                <TextInput
+                  style={s.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="La tua password"
+                  placeholderTextColor="#333"
+                  secureTextEntry
+                  onSubmitEditing={eseguiLogin}
+                  returnKeyType="done"
+                  autoFocus
+                />
+                {errore ? <Text style={s.errore}>{errore}</Text> : null}
+                <Pressable
+                  style={[s.btn, loading && { opacity: 0.6 }]}
+                  onPress={eseguiLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#0A0A0A" size="small" />
+                  ) : (
+                    <Text style={s.btnText}>Accedi</Text>
+                  )}
+                </Pressable>
+                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
+                  <Text style={s.linkBtnText}>← Torna</Text>
+                </Pressable>
+              </>
+            )}
+
+            {step === "register" && (
+              <>
+                <Text style={s.stepTitle}>Crea il tuo account</Text>
+                <Text style={s.emailDisplay}>{email}</Text>
                 <View style={s.row}>
                   <View style={s.halfField}>
                     <Text style={s.label}>Nome *</Text>
@@ -318,49 +420,26 @@ export default function Login() {
                   placeholderTextColor="#333"
                   keyboardType="phone-pad"
                 />
+                {errore ? <Text style={s.errore}>{errore}</Text> : null}
+                <Pressable
+                  style={[s.btn, loading && { opacity: 0.6 }]}
+                  onPress={eseguiRegistrazione}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#0A0A0A" size="small" />
+                  ) : (
+                    <Text style={s.btnText}>Crea Account</Text>
+                  )}
+                </Pressable>
+                <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
+                  <Text style={s.linkBtnText}>← Torna</Text>
+                </Pressable>
               </>
             )}
-
-            <Text style={s.label}>Email *</Text>
-            <TextInput
-              style={s.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="La tua email"
-              placeholderTextColor="#333"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <Text style={s.label}>Password *</Text>
-            <TextInput
-              style={s.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="La tua password"
-              placeholderTextColor="#333"
-              secureTextEntry
-            />
-
-            {errore ? <Text style={s.errore}>{errore}</Text> : null}
-
-            <Pressable
-              style={[s.btn, loading && { opacity: 0.6 }]}
-              onPress={modo === "login" ? eseguiLogin : eseguiRegistrazione}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#0A0A0A" size="small" />
-              ) : (
-                <Text style={s.btnText}>
-                  {modo === "login" ? "Accedi" : "Crea Account"}
-                </Text>
-              )}
-            </Pressable>
           </Animated.View>
 
           <Text style={s.footer}>PRENOTA IL TUO STILE</Text>
-
           <View style={{ height: 50 }} />
         </ScrollView>
       </KeyboardAvoidingView>

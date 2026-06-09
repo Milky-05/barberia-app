@@ -131,4 +131,49 @@ export const s = StyleSheet.create({
   },
 
   footer: { color: "#1A1A1A", fontSize: 10, letterSpacing: 4, marginTop: 30 },
+
+  stepTitle: {
+    color: "#FFF",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+  stepDesc: {
+    color: "#888",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  emailDisplay: {
+    color: "#D4AF37",
+    fontSize: 13,
+    marginBottom: 16,
+    opacity: 0.8,
+  },
+  btnSecondary: {
+    borderWidth: 1,
+    borderColor: "#D4AF37",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 16,
+    cursor: "pointer" as any,
+  },
+  btnSecondaryText: {
+    color: "#D4AF37",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  linkBtn: {
+    alignItems: "center",
+    marginTop: 14,
+    cursor: "pointer" as any,
+  },
+  linkBtnText: {
+    color: "#444",
+    fontSize: 13,
+    fontWeight: "600",
+  },
 });
