@@ -104,6 +104,8 @@ export default function AdminDashboard() {
   const [showCambiaPw, setShowCambiaPw] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [nonLetteAdmin, setNonLetteAdmin] = useState(0);
+  const [activeTab, setActiveTab] = useState<"home" | "agenda">("home");
+  const [appDetail, setAppDetail] = useState<any>(null);
   const sheetAnim = useRef(new Animated.Value(SHEET_H)).current;
   const overlayOp = useRef(new Animated.Value(0)).current;
   const headerOp = useRef(new Animated.Value(0)).current;
@@ -441,6 +443,52 @@ export default function AdminDashboard() {
     await supabase.auth.signOut();
     router.replace("/");
   };
+  const BARB_COLORS = ["#D4AF37", "#4A8FD4", "#E5734A", "#50C878", "#9B59B6"];
+  const getBarbColor = (barbId: number) => {
+    const idx = barbieri.findIndex((b) => b.id === barbId);
+    return BARB_COLORS[Math.max(0, idx) % BARB_COLORS.length];
+  };
+
+  const DAY_SHORT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+  const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  })();
+
+  const getWeekDays = () => {
+    const [y, m, d] = dataCorrente.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    const day = date.getDay();
+    const monday = new Date(date);
+    monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+    return Array.from({ length: 7 }, (_, i) => {
+      const dt = new Date(monday);
+      dt.setDate(monday.getDate() + i);
+      const yy = dt.getFullYear();
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      const dd = String(dt.getDate()).padStart(2, "0");
+      return { dateStr: `${yy}-${mm}-${dd}`, dt };
+    });
+  };
+
+  const shiftWeek = (n: number) => {
+    const [y, m, d] = dataCorrente.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + n * 7);
+    setDataCorrente(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`);
+  };
+
+  const goToday = () => setDataCorrente(todayStr);
+
+  const weekDays = getWeekDays();
+  const wFirst = weekDays[0].dt;
+  const wLast = weekDays[6].dt;
+  const weekLabel = wFirst.getMonth() === wLast.getMonth()
+    ? `${MONTHS[wFirst.getMonth()]} ${wFirst.getFullYear()}`
+    : `${MONTHS[wFirst.getMonth()].slice(0,3)} — ${MONTHS[wLast.getMonth()].slice(0,3)} ${wFirst.getFullYear()}`;
+
   const fmtDataLunga = (d: string) => {
     const dt = new Date(d);
     const g = [
@@ -538,497 +586,421 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={st.container}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-        <Animated.View style={[st.header, { opacity: headerOp }]}>
-          <View>
-            <Text style={st.headerLabel}>AMMINISTRATORE</Text>
-            <Text style={st.headerBrand}>BULLDOG BARBER SHOP</Text>
-            <Text style={st.headerUser}>💈 {utente?.nome}</Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Pressable style={st.headerBtnNotif} onPress={() => {}}>
-              <Text style={{ fontSize: 18 }}>🔔</Text>
-              {nonLetteAdmin > 0 && (
-                <View style={st.headerBadge}>
-                  <Text style={st.headerBadgeText}>{nonLetteAdmin}</Text>
-                </View>
-              )}
-            </Pressable>
-            <Pressable style={st.headerBtn} onPress={apriProfilo}>
-              <Text style={{ fontSize: 18 }}>👤</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-
-        <View style={st.sedeRow}>
-          {sedi.map((sede) => (
-            <Pressable
-              key={sede.id}
-              style={[st.sedeTab, sedeCorrente === sede.id && st.sedeTabA]}
-              onPress={() => {
-                setSedeCorrente(sede.id);
-                setFiltroBarbiere(utente?.id);
-                setShowFiltri(false);
-              }}
-            >
-              <Text
-                style={[
-                  st.sedeTabText,
-                  sedeCorrente === sede.id && st.sedeTabTextA,
-                ]}
-              >
-                {sede.nome}
-              </Text>
-            </Pressable>
-          ))}
+      {/* HEADER */}
+      <Animated.View style={[st.header, { opacity: headerOp }]}>
+        <View>
+          <Text style={st.headerLabel}>AMMINISTRATORE</Text>
+          <Text style={st.headerBrand}>BULLDOG BARBER SHOP</Text>
+          <Text style={st.headerUser}>💈 {utente?.nome}</Text>
         </View>
-
-        <View style={st.statRow}>
-          <View style={st.statCard}>
-            <Text style={st.statVal}>{attivi.length}</Text>
-            <Text style={st.statLbl}>Appuntamenti</Text>
-          </View>
-        </View>
-
-        <Text style={st.secTitle}>— Data</Text>
-        <View style={st.dataRow}>
-          <Pressable
-            style={st.dataArrow}
-            onPress={() => {
-              const d = new Date(dataCorrente);
-              d.setDate(d.getDate() - 1);
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, "0");
-              const dd = String(d.getDate()).padStart(2, "0");
-              setDataCorrente(`${y}-${m}-${dd}`);
-            }}
-          >
-            <Text style={st.dataArrowText}>‹</Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Pressable style={st.headerBtnNotif} onPress={() => {}}>
+            <Text style={{ fontSize: 18 }}>🔔</Text>
+            {nonLetteAdmin > 0 && (
+              <View style={st.headerBadge}>
+                <Text style={st.headerBadgeText}>{nonLetteAdmin}</Text>
+              </View>
+            )}
           </Pressable>
+          <Pressable style={st.headerBtn} onPress={apriProfilo}>
+            <Text style={{ fontSize: 18 }}>👤</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      {/* SEDE TABS — sempre visibili */}
+      <View style={st.sedeRow}>
+        {sedi.map((sede) => (
           <Pressable
-            style={st.dataCenterBtn}
-            onPress={() => setShowCalendario(!showCalendario)}
+            key={sede.id}
+            style={[st.sedeTab, sedeCorrente === sede.id && st.sedeTabA]}
+            onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(utente?.id); setShowFiltri(false); }}
           >
-            <Text style={st.dataCenterText}>
-              📅 {fmtDataLunga(dataCorrente)}
-            </Text>
-            <Text style={{ color: "#D4AF37", fontSize: 10, marginTop: 2 }}>
-              {showCalendario ? "▲ chiudi" : "▼ calendario"}
+            <Text style={[st.sedeTabText, sedeCorrente === sede.id && st.sedeTabTextA]}>
+              {sede.nome}
             </Text>
           </Pressable>
-          <Pressable
-            style={st.dataArrow}
-            onPress={() => {
-              const d = new Date(dataCorrente);
-              d.setDate(d.getDate() + 1);
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, "0");
-              const dd = String(d.getDate()).padStart(2, "0");
-              setDataCorrente(`${y}-${m}-${dd}`);
-            }}
-          >
-            <Text style={st.dataArrowText}>›</Text>
-          </Pressable>
-        </View>
-        {showCalendario && (
-          <View style={st.calBox}>
-            <Calendar
-              firstDay={1}
-              current={dataCorrente}
-              onDayPress={(day: any) => {
-                setDataCorrente(day.dateString);
-                setShowCalendario(false);
-              }}
-              markedDates={{
-                [dataCorrente]: { selected: true, selectedColor: "#D4AF37" },
-              }}
-              theme={{
-                backgroundColor: "#0A0A0A",
-                calendarBackground: "#141414",
-                textSectionTitleColor: "#D4AF37",
-                selectedDayBackgroundColor: "#D4AF37",
-                selectedDayTextColor: "#0A0A0A",
-                todayTextColor: "#D4AF37",
-                dayTextColor: "#FFF",
-                textDisabledColor: "#333",
-                monthTextColor: "#D4AF37",
-                arrowColor: "#D4AF37",
-                textMonthFontWeight: "bold",
-              }}
-            />
-          </View>
-        )}
-
-        <Text style={st.secTitle}>— Barbieri</Text>
-        <Pressable
-          style={st.dataBtn}
-          onPress={() => setShowFiltri(!showFiltri)}
-        >
-          <Text style={st.dataBtnText}>
-            💈{" "}
-            {filtroBarbiere === utente?.id
-              ? "I Miei Appuntamenti"
-              : filtroBarbiere === null
-                ? "Tutti i Barbieri"
-                : barbieri.find((b) => b.id === filtroBarbiere)?.nome ||
-                  "Barbiere"}
-          </Text>
-          <Text style={{ color: "#D4AF37", fontSize: 14 }}>
-            {showFiltri ? "▲" : "▼"}
-          </Text>
-        </Pressable>
-        {showFiltri && (
-          <View style={st.filtriDrop}>
-            <Pressable
-              style={[
-                st.filtroItem,
-                filtroBarbiere === utente?.id && st.filtroItemA,
-              ]}
-              onPress={() => {
-                setFiltroBarbiere(utente?.id);
-                setShowFiltri(false);
-              }}
-            >
-              <Text
-                style={[
-                  st.filtroItemText,
-                  filtroBarbiere === utente?.id && st.filtroItemTextA,
-                ]}
-              >
-                📋 I Miei Appuntamenti
-              </Text>
-            </Pressable>
-            <View
-              style={{
-                height: 1,
-                backgroundColor: "#1A1A1A",
-                marginVertical: 4,
-              }}
-            />
-            <Pressable
-              style={[st.filtroItem, filtroBarbiere === null && st.filtroItemA]}
-              onPress={() => {
-                setFiltroBarbiere(null);
-                setShowFiltri(false);
-              }}
-            >
-              <Text
-                style={[
-                  st.filtroItemText,
-                  filtroBarbiere === null && st.filtroItemTextA,
-                ]}
-              >
-                👥 Tutti i Barbieri
-              </Text>
-            </Pressable>
-            {barbieri
-              .filter((b) => !b.assente && b.id !== utente?.id)
-              .map((b) => (
-                <Pressable
-                  key={b.id}
-                  style={[
-                    st.filtroItem,
-                    filtroBarbiere === b.id && st.filtroItemA,
-                  ]}
-                  onPress={() => {
-                    setFiltroBarbiere(b.id);
-                    setShowFiltri(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      st.filtroItemText,
-                      filtroBarbiere === b.id && st.filtroItemTextA,
-                    ]}
-                  >
-                    💈 {b.nome}
-                  </Text>
-                </Pressable>
-              ))}
-          </View>
-        )}
-
-        <View style={st.actRow}>
-          <Pressable style={st.actGold} onPress={apriModalAggiungi}>
-            <Text style={st.actGoldText}>+ Nuovo Appuntamento</Text>
-          </Pressable>
-          <Pressable
-            style={st.actRed}
-            onPress={() => {
-              setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
-              setShowAssenza(true);
-            }}
-          >
-            <Text style={st.actRedText}>🔴 Assente</Text>
-          </Pressable>
-        </View>
-
-        {barbieriAssenti.map((b) => (
-          <View key={b.id} style={st.absCard}>
-            <Text style={st.absText}>🔴 {b.nome} è assente</Text>
-            <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-              <Text style={st.absBtnText}>Riattiva</Text>
-            </Pressable>
-          </View>
         ))}
+      </View>
 
-        <Text style={st.secTitle}>— Appuntamenti</Text>
-        {orariGiornata.length === 0 ? (
-          <View style={st.emptyBox}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-            <Text style={st.emptyText}>Giorno di chiusura</Text>
-          </View>
-        ) : prenotazioniPerBarbiere.length === 1 ? (
-          <View>
-            {(() => {
-              const barbId = prenotazioniPerBarbiere[0].id;
-              const righe: {
-                ora: string;
-                tipo: "libero" | "app20" | "app40";
-                app?: any;
-              }[] = [];
-              const skipSet = new Set<string>();
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
 
-              orariGiornata.forEach((ora) => {
-                if (skipSet.has(ora)) return;
-                const stato = getSlotStato(barbId, ora);
-                if (stato.tipo === "inizio") {
-                  const dur = stato.app.durata_minuti || 40;
-                  if (dur >= 40) {
-                    const idx = orariGiornata.indexOf(ora);
-                    if (idx + 1 < orariGiornata.length)
-                      skipSet.add(orariGiornata[idx + 1]);
-                    righe.push({ ora, tipo: "app40", app: stato.app });
-                  } else {
-                    righe.push({ ora, tipo: "app20", app: stato.app });
-                  }
-                } else if (stato.tipo === "libero") {
-                  righe.push({ ora, tipo: "libero" });
-                }
-              });
+        {/* ══════════ HOME TAB ══════════ */}
+        {activeTab === "home" && (
+          <>
+            <View style={st.statRow}>
+              <View style={st.statCard}>
+                <Text style={st.statVal}>{attivi.length}</Text>
+                <Text style={st.statLbl}>Appuntamenti — {fmtDataLunga(dataCorrente)}</Text>
+              </View>
+            </View>
 
-              return righe.map((r) => (
-                <View
-                  key={r.ora}
-                  style={[
-                    st.singleRow,
-                    r.app && st.singleRowOcc,
-                    r.tipo === "app40" && { minHeight: 110 },
-                  ]}
-                >
-                  <View
-                    style={[
-                      st.singleOraBox,
-                      r.tipo === "app40" && {
-                        alignSelf: "flex-start" as any,
-                        paddingTop: 16,
-                      },
-                    ]}
+            {barbieriAssenti.map((b) => (
+              <View key={b.id} style={st.absCard}>
+                <Text style={st.absText}>🔴 {b.nome} è assente</Text>
+                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                  <Text style={st.absBtnText}>Riattiva</Text>
+                </Pressable>
+              </View>
+            ))}
+
+            <View style={[st.actRow, { marginTop: 16 }]}>
+              <Pressable style={st.actGold} onPress={apriModalAggiungi}>
+                <Text style={st.actGoldText}>+ Nuovo Appuntamento</Text>
+              </Pressable>
+              <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setShowAssenza(true); }}>
+                <Text style={st.actRedText}>🔴 Assente</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {/* ══════════ AGENDA TAB ══════════ */}
+        {activeTab === "agenda" && (
+          <>
+            {/* Navigazione settimana */}
+            <View style={st.weekHeader}>
+              <Pressable style={st.weekArrow} onPress={() => shiftWeek(-1)}>
+                <Text style={{ color: "#D4AF37", fontSize: 20 }}>‹</Text>
+              </Pressable>
+              <Text style={st.weekMonthLabel}>{weekLabel}</Text>
+              <Pressable style={st.weekArrow} onPress={() => shiftWeek(1)}>
+                <Text style={{ color: "#D4AF37", fontSize: 20 }}>›</Text>
+              </Pressable>
+            </View>
+
+            <View style={st.weekDaysRow}>
+              {weekDays.map(({ dateStr, dt }) => {
+                const isSel = dateStr === dataCorrente;
+                const isToday = dateStr === todayStr;
+                return (
+                  <Pressable
+                    key={dateStr}
+                    style={[st.weekDayBtn, isSel && st.weekDayBtnA, !isSel && isToday && st.weekDayBtnToday]}
+                    onPress={() => setDataCorrente(dateStr)}
                   >
-                    <Text style={[st.singleOra, !r.app && { color: "#333" }]}>
-                      {r.ora}
-                    </Text>
-                  </View>
-                  {r.app ? (
-                    <View
-                      style={[
-                        st.singleApp,
-                        r.tipo === "app40" && { minHeight: 95 },
-                      ]}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={st.singleCliente}>
-                          {r.app.cliente_nome}
-                        </Text>
-                        <Text style={st.singleServizio}>
-                          ✂️ {r.app.servizio_nome} • {r.app.durata_minuti || 40}{" "}
-                          min
-                        </Text>
-                      </View>
-                      <View style={st.singleBtns}>
-                        <Pressable
-                          style={st.singleEditBtn}
-                          onPress={() => apriModifica(r.app)}
-                        >
-                          <Text style={st.singleEditText}>✏️</Text>
-                        </Pressable>
-                        <Pressable
-                          style={st.singleDelBtn}
-                          onPress={() => cancella(r.app.id)}
-                        >
-                          <Text style={st.singleDelText}>🗑️</Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={st.singleEmpty}>
-                      <Text style={st.singleEmptyText}>—</Text>
-                    </View>
-                  )}
-                </View>
-              ));
-            })()}
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View>
-              <View style={st.tblHeaderRow}>
-                <View style={st.tblOraCol}>
-                  <Text style={st.tblOraHeader}>ORA</Text>
-                </View>
-                {prenotazioniPerBarbiere.map((b) => (
-                  <View key={b.id} style={st.tblBarbCol}>
-                    <Text style={st.tblBarbName}>💈 {b.nome}</Text>
-                  </View>
+                    <Text style={[st.weekDayName, isSel && st.weekDayNameA]}>{DAY_SHORT[dt.getDay()]}</Text>
+                    <Text style={[st.weekDayNum, isSel && st.weekDayNumA]}>{dt.getDate()}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {dataCorrente !== todayStr && (
+              <Pressable style={st.weekTodayBtn} onPress={goToday}>
+                <Text style={st.weekTodayText}>Oggi</Text>
+              </Pressable>
+            )}
+
+            {/* Filtro barbiere */}
+            <Pressable style={st.dataBtn} onPress={() => setShowFiltri(!showFiltri)}>
+              <Text style={st.dataBtnText}>
+                💈{" "}
+                {filtroBarbiere === utente?.id ? "I Miei Appuntamenti"
+                  : filtroBarbiere === null ? "Tutti i Barbieri"
+                  : barbieri.find((b) => b.id === filtroBarbiere)?.nome || "Barbiere"}
+              </Text>
+              <Text style={{ color: "#D4AF37", fontSize: 14 }}>{showFiltri ? "▲" : "▼"}</Text>
+            </Pressable>
+            {showFiltri && (
+              <View style={st.filtriDrop}>
+                <Pressable style={[st.filtroItem, filtroBarbiere === utente?.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(utente?.id); setShowFiltri(false); }}>
+                  <Text style={[st.filtroItemText, filtroBarbiere === utente?.id && st.filtroItemTextA]}>📋 I Miei Appuntamenti</Text>
+                </Pressable>
+                <View style={{ height: 1, backgroundColor: "#1A1A1A", marginVertical: 4 }} />
+                <Pressable style={[st.filtroItem, filtroBarbiere === null && st.filtroItemA]} onPress={() => { setFiltroBarbiere(null); setShowFiltri(false); }}>
+                  <Text style={[st.filtroItemText, filtroBarbiere === null && st.filtroItemTextA]}>👥 Tutti i Barbieri</Text>
+                </Pressable>
+                {barbieri.filter((b) => !b.assente && b.id !== utente?.id).map((b) => (
+                  <Pressable key={b.id} style={[st.filtroItem, filtroBarbiere === b.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(b.id); setShowFiltri(false); }}>
+                    <Text style={[st.filtroItemText, filtroBarbiere === b.id && st.filtroItemTextA]}>💈 {b.nome}</Text>
+                  </Pressable>
                 ))}
               </View>
-              {(() => {
-                const skipSet = new Set<string>();
+            )}
 
-                return orariGiornata.map((ora) => {
-                  if (skipSet.has(ora)) return null;
+            <View style={[st.actRow, { marginTop: 12 }]}>
+              <Pressable style={st.actGold} onPress={apriModalAggiungi}>
+                <Text style={st.actGoldText}>+ Nuovo Appuntamento</Text>
+              </Pressable>
+              <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setShowAssenza(true); }}>
+                <Text style={st.actRedText}>🔴 Assente</Text>
+              </Pressable>
+            </View>
 
-                  const has40 = prenotazioniPerBarbiere.some((b) => {
-                    const s = getSlotStato(b.id, ora);
-                    return (
-                      s.tipo === "inizio" && (s.app.durata_minuti || 40) >= 40
-                    );
+            {barbieriAssenti.map((b) => (
+              <View key={b.id} style={st.absCard}>
+                <Text style={st.absText}>🔴 {b.nome} è assente</Text>
+                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                  <Text style={st.absBtnText}>Riattiva</Text>
+                </Pressable>
+              </View>
+            ))}
+            {orariGiornata.length === 0 ? (
+              <View style={st.emptyBox}>
+                <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+                <Text style={st.emptyText}>Giorno di chiusura</Text>
+              </View>
+            ) : prenotazioniPerBarbiere.length === 1 ? (
+              <View>
+                {(() => {
+                  const barbId = prenotazioniPerBarbiere[0].id;
+                  const color = getBarbColor(barbId);
+                  const righe: {
+                    ora: string;
+                    tipo: "libero" | "app20" | "app40";
+                    app?: any;
+                  }[] = [];
+                  const skipSet = new Set<string>();
+
+                  orariGiornata.forEach((ora) => {
+                    if (skipSet.has(ora)) return;
+                    const stato = getSlotStato(barbId, ora);
+                    if (stato.tipo === "inizio") {
+                      const dur = stato.app.durata_minuti || 40;
+                      if (dur >= 40) {
+                        const idx = orariGiornata.indexOf(ora);
+                        if (idx + 1 < orariGiornata.length)
+                          skipSet.add(orariGiornata[idx + 1]);
+                        righe.push({ ora, tipo: "app40", app: stato.app });
+                      } else {
+                        righe.push({ ora, tipo: "app20", app: stato.app });
+                      }
+                    } else if (stato.tipo === "libero") {
+                      righe.push({ ora, tipo: "libero" });
+                    }
                   });
 
-                  let nextOra = "";
-                  if (has40) {
-                    const idx = orariGiornata.indexOf(ora);
-                    if (idx + 1 < orariGiornata.length) {
-                      nextOra = orariGiornata[idx + 1];
-                      skipSet.add(nextOra);
-                    }
-                  }
-
-                  const haApp = prenotazioniPerBarbiere.some(
-                    (b) => getSlotStato(b.id, ora).tipo === "inizio",
-                  );
-
-                  return (
+                  return righe.map((r) => (
                     <View
-                      key={ora}
-                      style={[st.tblRow, has40 && { minHeight: 130 }]}
+                      key={r.ora}
+                      style={[
+                        st.singleRow,
+                        r.app && st.singleRowOcc,
+                        r.tipo === "app40" && { minHeight: 110 },
+                      ]}
                     >
                       <View
                         style={[
-                          st.tblOraCol,
-                          has40 && {
-                            justifyContent: "flex-start" as any,
-                            paddingTop: 10,
+                          st.singleOraBox,
+                          r.tipo === "app40" && {
+                            alignSelf: "flex-start" as any,
+                            paddingTop: 16,
                           },
                         ]}
                       >
-                        <Text
-                          style={[st.tblOraText, !haApp && { color: "#333" }]}
-                        >
-                          {ora}
+                        <Text style={[st.singleOra, !r.app && { color: "#333" }]}>
+                          {r.ora}
                         </Text>
-                        {has40 && nextOra ? (
-                          <Text
-                            style={[
-                              st.tblOraText,
-                              { color: "#222", marginTop: 40 },
-                            ]}
-                          >
-                            {nextOra}
-                          </Text>
-                        ) : null}
                       </View>
-                      {prenotazioniPerBarbiere.map((b) => {
-                        const stato = getSlotStato(b.id, ora);
-                        const statoNext =
-                          has40 && nextOra ? getSlotStato(b.id, nextOra) : null;
+                      {r.app ? (
+                        <View
+                          style={[
+                            st.singleApp,
+                            r.tipo === "app40" && { minHeight: 95 },
+                            { borderLeftWidth: 3, borderLeftColor: color },
+                          ]}
+                        >
+                          <Pressable
+                            style={{ flex: 1, justifyContent: "center" }}
+                            onPress={() => setAppDetail(r.app)}
+                          >
+                            <Text style={st.singleCliente}>{r.app.cliente_nome}</Text>
+                            <Text style={st.singleServizio}>
+                              ✂️ {r.app.servizio_nome} • {r.app.durata_minuti || 40} min
+                            </Text>
+                          </Pressable>
+                          <View style={st.singleBtns}>
+                            <Pressable
+                              style={st.singleEditBtn}
+                              onPress={() => apriModifica(r.app)}
+                            >
+                              <Text style={st.singleEditText}>✏️</Text>
+                            </Pressable>
+                            <Pressable
+                              style={st.singleDelBtn}
+                              onPress={() => cancella(r.app.id)}
+                            >
+                              <Text style={st.singleDelText}>🗑️</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={st.singleEmpty}>
+                          <Text style={st.singleEmptyText}>—</Text>
+                        </View>
+                      )}
+                    </View>
+                  ));
+                })()}
+              </View>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View>
+                  <View style={st.tblHeaderRow}>
+                    <View style={st.tblOraCol}>
+                      <Text style={st.tblOraHeader}>ORA</Text>
+                    </View>
+                    {prenotazioniPerBarbiere.map((b) => (
+                      <View key={b.id} style={st.tblBarbCol}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getBarbColor(b.id) }} />
+                          <Text style={st.tblBarbName}>{b.nome}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                  {(() => {
+                    const skipSet = new Set<string>();
 
+                    return orariGiornata.map((ora) => {
+                      if (skipSet.has(ora)) return null;
+
+                      const has40 = prenotazioniPerBarbiere.some((b) => {
+                        const s = getSlotStato(b.id, ora);
                         return (
+                          s.tipo === "inizio" && (s.app.durata_minuti || 40) >= 40
+                        );
+                      });
+
+                      let nextOra = "";
+                      if (has40) {
+                        const idx = orariGiornata.indexOf(ora);
+                        if (idx + 1 < orariGiornata.length) {
+                          nextOra = orariGiornata[idx + 1];
+                          skipSet.add(nextOra);
+                        }
+                      }
+
+                      const haApp = prenotazioniPerBarbiere.some(
+                        (b) => getSlotStato(b.id, ora).tipo === "inizio",
+                      );
+
+                      return (
+                        <View
+                          key={ora}
+                          style={[st.tblRow, has40 && { minHeight: 130 }]}
+                        >
                           <View
-                            key={b.id}
                             style={[
-                              st.tblCell,
+                              st.tblOraCol,
                               has40 && {
                                 justifyContent: "flex-start" as any,
-                                paddingTop: 6,
+                                paddingTop: 10,
                               },
                             ]}
                           >
-                            {stato.tipo === "inizio" ? (
+                            <Text style={[st.tblOraText, !haApp && { color: "#333" }]}>
+                              {ora}
+                            </Text>
+                            {has40 && nextOra ? (
+                              <Text style={[st.tblOraText, { color: "#222", marginTop: 40 }]}>
+                                {nextOra}
+                              </Text>
+                            ) : null}
+                          </View>
+                          {prenotazioniPerBarbiere.map((b) => {
+                            const stato = getSlotStato(b.id, ora);
+                            const statoNext =
+                              has40 && nextOra ? getSlotStato(b.id, nextOra) : null;
+                            const color = getBarbColor(b.id);
+
+                            return (
                               <View
+                                key={b.id}
                                 style={[
-                                  st.tblAppCard,
-                                  (stato.app.durata_minuti || 40) >= 40 && {
-                                    minHeight: 110,
+                                  st.tblCell,
+                                  has40 && {
+                                    justifyContent: "flex-start" as any,
+                                    paddingTop: 6,
                                   },
                                 ]}
                               >
-                                <Text style={st.tblAppCliente}>
-                                  {stato.app.cliente_nome}
-                                </Text>
-                                <Text style={st.tblAppServizio}>
-                                  {stato.app.servizio_nome}
-                                </Text>
-                                <Text style={st.tblAppDurata}>
-                                  {stato.app.durata_minuti || 40} min
-                                </Text>
-                                <Pressable
-                                  style={st.tblAppDel}
-                                  onPress={() => cancella(stato.app.id)}
-                                >
-                                  <Text style={st.tblAppDelText}>✕</Text>
-                                </Pressable>
-                              </View>
-                            ) : stato.tipo === "continua" ? (
-                              <View style={st.tblEmpty}>
-                                <Text style={st.tblEmptyText}>—</Text>
-                              </View>
-                            ) : has40 ? (
-                              <View style={{ gap: 6, flex: 1 }}>
-                                <View style={[st.tblEmpty, { flex: 1 }]}>
-                                  <Text style={st.tblEmptyText}>—</Text>
-                                </View>
-                                {statoNext && statoNext.tipo === "inizio" ? (
-                                  <View style={st.tblAppCard}>
-                                    <Text style={st.tblAppCliente}>
-                                      {statoNext.app.cliente_nome}
-                                    </Text>
-                                    <Text style={st.tblAppServizio}>
-                                      {statoNext.app.servizio_nome}
-                                    </Text>
-                                    <Text style={st.tblAppDurata}>
-                                      {statoNext.app.durata_minuti || 40} min
-                                    </Text>
+                                {stato.tipo === "inizio" ? (
+                                  <View
+                                    style={[
+                                      st.tblAppCard,
+                                      (stato.app.durata_minuti || 40) >= 40 && { minHeight: 110 },
+                                      { borderLeftWidth: 3, borderLeftColor: color },
+                                    ]}
+                                  >
+                                    <Pressable style={{ flex: 1 }} onPress={() => setAppDetail(stato.app)}>
+                                      <Text style={st.tblAppCliente}>{stato.app.cliente_nome}</Text>
+                                      <Text style={st.tblAppServizio}>{stato.app.servizio_nome}</Text>
+                                      <Text style={st.tblAppDurata}>{stato.app.durata_minuti || 40} min</Text>
+                                    </Pressable>
                                     <Pressable
                                       style={st.tblAppDel}
-                                      onPress={() => cancella(statoNext.app.id)}
+                                      onPress={() => cancella(stato.app.id)}
                                     >
                                       <Text style={st.tblAppDelText}>✕</Text>
                                     </Pressable>
                                   </View>
+                                ) : stato.tipo === "continua" ? (
+                                  <View style={st.tblEmpty}>
+                                    <Text style={st.tblEmptyText}>—</Text>
+                                  </View>
+                                ) : has40 ? (
+                                  <View style={{ gap: 6, flex: 1 }}>
+                                    <View style={[st.tblEmpty, { flex: 1 }]}>
+                                      <Text style={st.tblEmptyText}>—</Text>
+                                    </View>
+                                    {statoNext && statoNext.tipo === "inizio" ? (
+                                      <View
+                                        style={[
+                                          st.tblAppCard,
+                                          { borderLeftWidth: 3, borderLeftColor: color },
+                                        ]}
+                                      >
+                                        <Pressable style={{ flex: 1 }} onPress={() => setAppDetail(statoNext.app)}>
+                                          <Text style={st.tblAppCliente}>{statoNext.app.cliente_nome}</Text>
+                                          <Text style={st.tblAppServizio}>{statoNext.app.servizio_nome}</Text>
+                                          <Text style={st.tblAppDurata}>{statoNext.app.durata_minuti || 40} min</Text>
+                                        </Pressable>
+                                        <Pressable
+                                          style={st.tblAppDel}
+                                          onPress={() => cancella(statoNext.app.id)}
+                                        >
+                                          <Text style={st.tblAppDelText}>✕</Text>
+                                        </Pressable>
+                                      </View>
+                                    ) : (
+                                      <View style={[st.tblEmpty, { flex: 1 }]}>
+                                        <Text style={st.tblEmptyText}>—</Text>
+                                      </View>
+                                    )}
+                                  </View>
                                 ) : (
-                                  <View style={[st.tblEmpty, { flex: 1 }]}>
+                                  <View style={st.tblEmpty}>
                                     <Text style={st.tblEmptyText}>—</Text>
                                   </View>
                                 )}
                               </View>
-                            ) : (
-                              <View style={st.tblEmpty}>
-                                <Text style={st.tblEmptyText}>—</Text>
-                              </View>
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  );
-                });
-              })()}
-            </View>
-          </ScrollView>
+                            );
+                          })}
+                        </View>
+                      );
+                    });
+                  })()}
+                </View>
+              </ScrollView>
+            )}
+            <View style={{ height: 90 }} />
+          </>
         )}
-        <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* BOTTOM TAB BAR */}
+      <View style={[st.bottomBar, { marginHorizontal: -20 }]}>
+        <Pressable style={st.bottomTab} onPress={() => setActiveTab("home")}>
+          <Text style={{ fontSize: 22 }}>🏠</Text>
+          <Text style={[st.bottomTabLabel, activeTab === "home" && st.bottomTabLabelA]}>Home</Text>
+        </Pressable>
+        <Pressable style={st.bottomTab} onPress={() => setActiveTab("agenda")}>
+          <Text style={{ fontSize: 22 }}>📅</Text>
+          <Text style={[st.bottomTabLabel, activeTab === "agenda" && st.bottomTabLabelA]}>Agenda</Text>
+        </Pressable>
+      </View>
 
       {/* MODAL AGGIUNGI */}
       {showAggiungi && (
@@ -1446,6 +1418,68 @@ export default function AdminDashboard() {
             )}
           </ScrollView>
         </Animated.View>
+      )}
+      {/* MODAL DETTAGLIO APPUNTAMENTO */}
+      {appDetail && (
+        <View style={st.modalOv}>
+          <View style={st.modal}>
+            <Text style={st.mTitle}>📋 Dettaglio</Text>
+            <View style={st.detailInfo}>
+              <View style={st.detailRow}>
+                <View style={st.detailIconBox}><Text style={{ fontSize: 18 }}>👤</Text></View>
+                <View>
+                  <Text style={st.detailLabel}>CLIENTE</Text>
+                  <Text style={st.detailValue}>{appDetail.cliente_nome}</Text>
+                </View>
+              </View>
+              <View style={st.detailRow}>
+                <View style={st.detailIconBox}><Text style={{ fontSize: 18 }}>✂️</Text></View>
+                <View>
+                  <Text style={st.detailLabel}>SERVIZIO</Text>
+                  <Text style={st.detailValue}>{appDetail.servizio_nome} • {appDetail.durata_minuti || 40} min</Text>
+                </View>
+              </View>
+              <View style={st.detailRow}>
+                <View style={st.detailIconBox}><Text style={{ fontSize: 18 }}>💈</Text></View>
+                <View>
+                  <Text style={st.detailLabel}>BARBIERE</Text>
+                  <Text style={st.detailValue}>{appDetail.barbiere_nome}</Text>
+                </View>
+              </View>
+              <View style={st.detailRow}>
+                <View style={st.detailIconBox}><Text style={{ fontSize: 18 }}>🕐</Text></View>
+                <View>
+                  <Text style={st.detailLabel}>ORARIO</Text>
+                  <Text style={st.detailValue}>{fmtDataLunga(dataCorrente)} • {appDetail.ora?.slice(0, 5)}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={st.detailBtns}>
+              <Pressable
+                style={st.detailEditBtn}
+                onPress={() => {
+                  const app = appDetail;
+                  setAppDetail(null);
+                  apriModifica(app);
+                }}
+              >
+                <Text style={st.detailEditText}>✏️ Modifica</Text>
+              </Pressable>
+              <Pressable
+                style={st.detailDelBtn}
+                onPress={() => {
+                  cancella(appDetail.id);
+                  setAppDetail(null);
+                }}
+              >
+                <Text style={st.detailDelText}>🗑️ Elimina</Text>
+              </Pressable>
+            </View>
+            <Pressable style={[st.mCancel, { marginTop: 12 }]} onPress={() => setAppDetail(null)}>
+              <Text style={{ color: "#666", fontWeight: "700", fontSize: 14, textAlign: "center" }}>Chiudi</Text>
+            </Pressable>
+          </View>
+        </View>
       )}
     </SafeAreaView>
   );
