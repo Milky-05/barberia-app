@@ -153,9 +153,10 @@ export const s = StyleSheet.create({
     opacity: 0.8,
   },
   btnSecondary: {
-    borderWidth: 1,
+    backgroundColor: "rgba(212,175,55,0.15)",
+    borderWidth: 1.5,
     borderColor: "#D4AF37",
-    padding: 14,
+    padding: 15,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 16,
@@ -163,8 +164,9 @@ export const s = StyleSheet.create({
   },
   btnSecondaryText: {
     color: "#D4AF37",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
   linkBtn: {
     alignItems: "center",
