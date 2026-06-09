@@ -178,4 +178,18 @@ export const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+
+  rinviaBox: {
+    marginTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#1A1A1A",
+    paddingTop: 20,
+    alignItems: "center",
+    gap: 12,
+  },
+  rinviaLabel: {
+    color: "#666",
+    fontSize: 13,
+    fontWeight: "500",
+  },
 });

@@ -448,15 +448,20 @@ export default function Login() {
                 <Text style={s.stepDesc}>
                   Clicca il link nell'email per accedere.
                 </Text>
-                <Pressable
-                  style={({ pressed }) => [
-                    s.btnSecondary,
-                    pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
-                  ]}
-                  onPress={rinviaLink}
-                >
-                  <Text style={s.btnSecondaryText}>Non hai ricevuto? Rinvia</Text>
-                </Pressable>
+
+                <View style={s.rinviaBox}>
+                  <Text style={s.rinviaLabel}>Non hai ricevuto l'email?</Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      s.btnSecondary,
+                      pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
+                    ]}
+                    onPress={rinviaLink}
+                  >
+                    <Text style={s.btnSecondaryText}>Rinvia e-mail</Text>
+                  </Pressable>
+                </View>
+
                 <Pressable style={s.linkBtn} onPress={tornaAllaEmail}>
                   <Text style={s.linkBtnText}>← Usa un'altra email</Text>
                 </Pressable>
