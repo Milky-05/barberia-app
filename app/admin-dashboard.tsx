@@ -711,7 +711,7 @@ export default function AdminDashboard() {
                 <Pressable style={[st.filtroItem, filtroBarbiere === null && st.filtroItemA]} onPress={() => { setFiltroBarbiere(null); setShowFiltri(false); }}>
                   <Text style={[st.filtroItemText, filtroBarbiere === null && st.filtroItemTextA]}>👥 Tutti i Barbieri</Text>
                 </Pressable>
-                {barbieri.filter((b) => !b.assente && b.id !== utente?.id).map((b) => (
+                {barbieri.filter((b) => !b.assente && b.id !== utente?.barbiere_id).map((b) => (
                   <Pressable key={b.id} style={[st.filtroItem, filtroBarbiere === b.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(b.id); setShowFiltri(false); }}>
                     <Text style={[st.filtroItemText, filtroBarbiere === b.id && st.filtroItemTextA]}>💈 {b.nome}</Text>
                   </Pressable>
@@ -722,9 +722,6 @@ export default function AdminDashboard() {
             <View style={[st.actRow, { marginTop: 12 }]}>
               <Pressable style={st.actGold} onPress={apriModalAggiungi}>
                 <Text style={st.actGoldText}>+ Nuovo Appuntamento</Text>
-              </Pressable>
-              <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setShowAssenza(true); }}>
-                <Text style={st.actRedText}>🔴 Assente</Text>
               </Pressable>
             </View>
 
