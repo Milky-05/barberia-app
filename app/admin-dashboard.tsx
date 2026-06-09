@@ -187,10 +187,7 @@ export default function AdminDashboard() {
     if (filtroBarbiere) url += `&barbiere_id=${filtroBarbiere}`;
     try {
       const res = await fetch(url, { headers: auth() });
-      if (res.status === 401) {
-        logout();
-        return;
-      }
+      if (!res.ok) return;
       setPrenotazioni(await res.json());
     } catch (err) {}
   };
