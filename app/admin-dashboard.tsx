@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,6 +16,7 @@ import { Calendar, LocaleConfig } from "react-native-calendars";
 
 // IMPORTIAMO GLI STILI E LA COSTANTE
 import { SHEET_H, st } from "../styles/adminDashboardStyles";
+import { supabase } from "../lib/supabase";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
@@ -125,26 +125,24 @@ export default function AdminDashboard() {
   }, []);
   const caricaDati = async () => {
     try {
-      const t = await AsyncStorage.getItem("token");
-      const u = JSON.parse((await AsyncStorage.getItem("utente")) || "{}");
-      if (!t) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.replace("/");
         return;
       }
-      setToken(t);
+      const { data: profilo } = await supabase
+        .from("profili")
+        .select("*")
+        .eq("id", session.user.id)
+        .single();
+      const u = { ...profilo, email: session.user.email };
+      setToken(session.access_token);
       setUtente(u);
       setEditNome(u.nome || "");
       const resSedi = await fetch(`${BACKEND_URL}/api/sedi`);
       const tutteSedi = await resSedi.json();
-      const barbiereSediStr = await AsyncStorage.getItem("barbiere_sedi");
-      const barbiereSedi = barbiereSediStr ? JSON.parse(barbiereSediStr) : null;
-      let ds = tutteSedi;
-      if (barbiereSedi && barbiereSedi.length > 0) {
-        const sediIds = barbiereSedi.map((s: any) => s.id);
-        ds = tutteSedi.filter((s: any) => sediIds.includes(s.id));
-      }
-      setSedi(ds);
-      if (ds.length > 0) setSedeCorrente(ds[0].id);
+      setSedi(tutteSedi);
+      if (tutteSedi.length > 0) setSedeCorrente(tutteSedi[0].id);
       setFiltroBarbiere(u.id);
       const resServ = await fetch(`${BACKEND_URL}/api/servizi`);
       setServizi(await resServ.json());
@@ -405,7 +403,6 @@ export default function AdminDashboard() {
       });
       if ((await res.json()).success) {
         const nu = { ...utente, nome: editNome };
-        await AsyncStorage.setItem("utente", JSON.stringify(nu));
         setUtente(nu);
         setEditMode(false);
         msg("Aggiornato!");
@@ -444,8 +441,7 @@ export default function AdminDashboard() {
     if (Platform.OS === "web") {
       if (!window.confirm("Sei sicuro di voler uscire?")) return;
     }
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("utente");
+    await supabase.auth.signOut();
     router.replace("/");
   };
   const fmtDataLunga = (d: string) => {
