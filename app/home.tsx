@@ -132,8 +132,8 @@ export default function Home() {
     useCallback(() => {
       const ricarica = async () => {
         const visti = await AsyncStorage.getItem("appuntamenti_visti");
+        await contaAppuntamenti();
         if (visti) setNumAppuntamenti(0);
-        else contaAppuntamenti();
         contaNotifiche();
       };
       ricarica();
