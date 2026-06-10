@@ -192,7 +192,8 @@ export default function SceltaData() {
     setInvioInCorso(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      if (!session) { router.replace("/"); return; }
+      const token = session.access_token;
       const response = await fetch(`${BACKEND_URL}/api/prenotazioni`, {
         method: "POST",
         headers: {
