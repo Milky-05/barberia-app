@@ -222,7 +222,11 @@ export default function Login() {
     });
 
     if (error) {
-      setErrore(error.message || "Errore durante la registrazione. Riprova.");
+      if (error.message?.toLowerCase().includes("rate limit")) {
+        setErrore("Troppi tentativi. Riprova tra qualche minuto.");
+      } else {
+        setErrore("Errore durante la registrazione. Riprova.");
+      }
       setLoading(false);
       return;
     }
