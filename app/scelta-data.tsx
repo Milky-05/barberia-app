@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
+import { supabase } from "../lib/supabase";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -190,7 +191,8 @@ export default function SceltaData() {
     }
     setInvioInCorso(true);
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const response = await fetch(`${BACKEND_URL}/api/prenotazioni`, {
         method: "POST",
         headers: {

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { supabase } from "../lib/supabase";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,7 +32,8 @@ export default function Messaggi() {
 
   const caricaMessaggi = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(`${BACKEND_URL}/api/notifiche`, {
         headers: { Authorization: `Bearer ${token}` },
       });

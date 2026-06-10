@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { supabase } from "../lib/supabase";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -37,8 +38,9 @@ export default function MieiAppuntamenti() {
   }, []);
 
   const init = async () => {
-    const t = await AsyncStorage.getItem("token");
-    setToken(t || "");
+    const { data: { session } } = await supabase.auth.getSession();
+    const t = session?.access_token || "";
+    setToken(t);
 
     const visti = await AsyncStorage.getItem("appuntamenti_visti");
     if (!visti) setShowBanner(true);

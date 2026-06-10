@@ -89,7 +89,8 @@ export default function Home() {
 
   const contaNotifiche = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(`${BACKEND_URL}/api/notifiche`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -101,7 +102,8 @@ export default function Home() {
 
   const contaAppuntamenti = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(`${BACKEND_URL}/api/prenotazioni/miei`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -168,7 +170,8 @@ export default function Home() {
 
   const salvaProfilo = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(`${BACKEND_URL}/api/auth/profilo`, {
         method: "PATCH",
         headers: {
@@ -198,7 +201,8 @@ export default function Home() {
       return;
     }
     try {
-      const token = await AsyncStorage.getItem("token");
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const res = await fetch(`${BACKEND_URL}/api/auth/cambia-password`, {
         method: "PATCH",
         headers: {
