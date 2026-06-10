@@ -32,6 +32,7 @@ export default function Home() {
   const [nuovaPw, setNuovaPw] = useState("");
   const [nonLette, setNonLette] = useState(0);
   const [numAppuntamenti, setNumAppuntamenti] = useState(0);
+  const [appDomani, setAppDomani] = useState<any | null>(null);
 
   const sheetAnim = useRef(new Animated.Value(SHEET_H)).current;
   const overlayOp = useRef(new Animated.Value(0)).current;
@@ -108,7 +109,22 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (Array.isArray(data)) setNumAppuntamenti(data.length);
+      if (!Array.isArray(data)) return;
+      setNumAppuntamenti(data.length);
+
+      const domani = new Date();
+      domani.setDate(domani.getDate() + 1);
+      const domaniStr = domani.toISOString().split("T")[0];
+      const trovato = data.find((a: any) => {
+        const d = new Date(a.data).toISOString().split("T")[0];
+        return d === domaniStr;
+      });
+      if (trovato) {
+        const dismissed = await AsyncStorage.getItem(`reminder_dismissed_${trovato.id}`);
+        if (!dismissed) setAppDomani(trovato);
+      } else {
+        setAppDomani(null);
+      }
     } catch (err) {}
   };
 
@@ -252,6 +268,27 @@ export default function Home() {
             <Text style={s.profileIcon}>👤</Text>
           </Pressable>
         </Animated.View>
+
+        {appDomani && (
+          <View style={s.reminderBanner}>
+            <Text style={s.reminderIcon}>🔔</Text>
+            <View style={s.reminderBody}>
+              <Text style={s.reminderTitle}>Appuntamento domani</Text>
+              <Text style={s.reminderService}>{appDomani.servizio_nome}</Text>
+              <Text style={s.reminderDetail}>🕐 {appDomani.ora?.slice(0, 5)}  💈 {appDomani.barbiere_nome}</Text>
+              <Text style={s.reminderDetail}>📍 {appDomani.sede_nome}</Text>
+            </View>
+            <Pressable
+              style={s.reminderClose}
+              onPress={async () => {
+                await AsyncStorage.setItem(`reminder_dismissed_${appDomani.id}`, "1");
+                setAppDomani(null);
+              }}
+            >
+              <Text style={s.reminderCloseText}>✕</Text>
+            </Pressable>
+          </View>
+        )}
 
         <Text style={s.sectionTitle}>— Prenota</Text>
         <Animated.View

@@ -143,6 +143,37 @@ export const s = StyleSheet.create({
   },
   badgeText: { color: "#0A0A0A", fontSize: 11, fontWeight: "900" },
 
+  // Reminder banner (appuntamento domani)
+  reminderBanner: {
+    backgroundColor: "#1A1600",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  reminderIcon: { fontSize: 22, marginTop: 1 },
+  reminderBody: { flex: 1 },
+  reminderTitle: {
+    color: "#D4AF37",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  reminderService: { color: "#FFF", fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  reminderDetail: { color: "#888", fontSize: 13, marginTop: 2 },
+  reminderClose: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    ...(Platform.OS === "web" ? { cursor: "pointer" as any } : {}),
+  },
+  reminderCloseText: { color: "#555", fontSize: 18, lineHeight: 20 },
+
   // Footer
   footerBox: { alignItems: "center", paddingTop: 28 },
   footerLine: {
