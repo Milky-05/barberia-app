@@ -1,6 +1,7 @@
 // app/home.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useFocusEffect } from "expo-router";
+import { supabase } from "../lib/supabase";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -159,6 +160,7 @@ export default function Home() {
     if (Platform.OS === "web") {
       if (!window.confirm("Sei sicuro di voler uscire?")) return;
     }
+    await supabase.auth.signOut();
     await AsyncStorage.removeItem("token");
     await AsyncStorage.removeItem("utente");
     router.replace("/");
