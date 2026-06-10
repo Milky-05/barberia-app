@@ -15,7 +15,7 @@ import {
 import { supabase } from "../lib/supabase";
 import { s } from "../styles/indexStyles";
 
-type LoginStep = "email" | "magic_sent" | "password";
+type LoginStep = "email" | "otp_code" | "password";
 type Modo = "accedi" | "registrati";
 
 export default function Login() {
@@ -26,6 +26,7 @@ export default function Login() {
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [errore, setErrore] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -132,6 +133,7 @@ export default function Login() {
     setStep("email");
     setErrore("");
     setPassword("");
+    setOtpCode("");
   };
 
   // Tab Accedi — step 1: controlla l'email via RPC
@@ -161,12 +163,11 @@ export default function Login() {
       setStep("email");
       setErrore("Email non trovata. Compila i dati per registrarti.");
     } else if (role === "cliente") {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
       await supabase.auth.signInWithOtp({
         email: trimmedEmail,
-        options: { emailRedirectTo: origin },
+        options: { shouldCreateUser: false },
       });
-      setStep("magic_sent");
+      setStep("otp_code");
     } else {
       // admin o super_admin → mostra campo password
       setStep("password");
@@ -196,7 +197,7 @@ export default function Login() {
     setLoading(false);
   };
 
-  // Tab Registrati: crea account cliente e invia magic link
+  // Tab Registrati: crea account cliente e invia codice OTP
   const eseguiRegistrazione = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail) { setErrore("Inserisci la tua email"); return; }
@@ -208,11 +209,10 @@ export default function Login() {
     setErrore("");
     setLoading(true);
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
     const { error } = await supabase.auth.signInWithOtp({
       email: trimmedEmail,
       options: {
-        emailRedirectTo: origin,
+        shouldCreateUser: true,
         data: {
           nome: nome.trim(),
           cognome: cognome.trim(),
@@ -227,22 +227,40 @@ export default function Login() {
       return;
     }
 
-    setStep("magic_sent");
+    setStep("otp_code");
     setLoading(false);
   };
 
-  const rinviaLink = async () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const rinviaOtp = async () => {
     await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: origin },
+      options: { shouldCreateUser: false },
     });
-    setErrore("Link inviato di nuovo!");
+    setOtpCode("");
+    setErrore("Codice inviato di nuovo!");
+  };
+
+  const verificaOtp = async () => {
+    if (otpCode.trim().length !== 6) { setErrore("Inserisci il codice di 6 cifre"); return; }
+    setErrore("");
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: otpCode.trim(),
+      type: "email",
+    });
+    if (error) {
+      setErrore("Codice non valido o scaduto. Riprova.");
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
   };
 
   const tornaAllaEmail = () => {
     setStep("email");
     setPassword("");
+    setOtpCode("");
     setErrore("");
   };
 
@@ -437,28 +455,49 @@ export default function Login() {
               </>
             )}
 
-            {/* ── STEP MAGIC LINK INVIATO ── */}
-            {step === "magic_sent" && (
+            {/* ── STEP OTP ── */}
+            {step === "otp_code" && (
               <>
                 <Text style={s.stepTitle}>Controlla la tua email</Text>
                 <Text style={s.stepDesc}>
-                  Ti abbiamo inviato un link di accesso a{"\n"}
+                  Abbiamo inviato un codice di 6 cifre a{"\n"}
                   <Text style={{ color: "#D4AF37" }}>{email}</Text>
                 </Text>
-                <Text style={s.stepDesc}>
-                  Clicca il link nell'email per accedere.
-                </Text>
+
+                <Text style={s.label}>CODICE DI VERIFICA</Text>
+                <TextInput
+                  style={[s.input, { textAlign: "center", fontSize: 26, letterSpacing: 10, fontWeight: "800" }]}
+                  value={otpCode}
+                  onChangeText={(t) => setOtpCode(t.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  placeholderTextColor="#333"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+
+                {errore ? <Text style={s.errore}>{errore}</Text> : null}
+
+                <Pressable
+                  style={[s.btn, (loading || otpCode.length !== 6) && { opacity: 0.5 }]}
+                  onPress={verificaOtp}
+                  disabled={loading || otpCode.length !== 6}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#0A0A0A" size="small" />
+                    : <Text style={s.btnText}>Verifica</Text>}
+                </Pressable>
 
                 <View style={s.rinviaBox}>
-                  <Text style={s.rinviaLabel}>Non hai ricevuto l'email?</Text>
+                  <Text style={s.rinviaLabel}>Non hai ricevuto il codice?</Text>
                   <Pressable
                     style={({ pressed }) => [
                       s.btnSecondary,
                       pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
                     ]}
-                    onPress={rinviaLink}
+                    onPress={rinviaOtp}
                   >
-                    <Text style={s.btnSecondaryText}>Rinvia e-mail</Text>
+                    <Text style={s.btnSecondaryText}>Rinvia codice</Text>
                   </Pressable>
                 </View>
 

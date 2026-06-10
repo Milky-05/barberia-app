@@ -614,7 +614,7 @@ export default function AdminDashboard() {
           <Pressable
             key={sede.id}
             style={[st.sedeTab, sedeCorrente === sede.id && st.sedeTabA]}
-            onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(utente?.id); setShowFiltri(false); }}
+            onPress={() => { setSedeCorrente(sede.id); setFiltroBarbiere(utente?.barbiere_id); setShowFiltri(false); }}
           >
             <Text style={[st.sedeTabText, sedeCorrente === sede.id && st.sedeTabTextA]}>
               {sede.nome}
@@ -696,7 +696,7 @@ export default function AdminDashboard() {
             <Pressable style={st.dataBtn} onPress={() => setShowFiltri(!showFiltri)}>
               <Text style={st.dataBtnText}>
                 💈{" "}
-                {filtroBarbiere === utente?.id ? "I Miei Appuntamenti"
+                {filtroBarbiere === utente?.barbiere_id ? "I Miei Appuntamenti"
                   : filtroBarbiere === null ? "Tutti i Barbieri"
                   : barbieri.find((b) => b.id === filtroBarbiere)?.nome || "Barbiere"}
               </Text>
@@ -704,8 +704,8 @@ export default function AdminDashboard() {
             </Pressable>
             {showFiltri && (
               <View style={st.filtriDrop}>
-                <Pressable style={[st.filtroItem, filtroBarbiere === utente?.id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(utente?.id); setShowFiltri(false); }}>
-                  <Text style={[st.filtroItemText, filtroBarbiere === utente?.id && st.filtroItemTextA]}>📋 I Miei Appuntamenti</Text>
+                <Pressable style={[st.filtroItem, filtroBarbiere === utente?.barbiere_id && st.filtroItemA]} onPress={() => { setFiltroBarbiere(utente?.barbiere_id); setShowFiltri(false); }}>
+                  <Text style={[st.filtroItemText, filtroBarbiere === utente?.barbiere_id && st.filtroItemTextA]}>📋 I Miei Appuntamenti</Text>
                 </Pressable>
                 <View style={{ height: 1, backgroundColor: "#1A1A1A", marginVertical: 4 }} />
                 <Pressable style={[st.filtroItem, filtroBarbiere === null && st.filtroItemA]} onPress={() => { setFiltroBarbiere(null); setShowFiltri(false); }}>
