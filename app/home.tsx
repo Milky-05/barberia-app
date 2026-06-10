@@ -334,7 +334,7 @@ export default function Home() {
                 </View>
               )}
             </View>
-            <Text style={s.gridTitleGold}>Messaggi</Text>
+            <Text style={s.gridTitle}>Messaggi</Text>
             <Text style={s.gridSub}>Comunicazioni dallo staff</Text>
           </Pressable>
         </Animated.View>
