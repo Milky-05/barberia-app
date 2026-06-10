@@ -163,10 +163,21 @@ export const s = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1.5,
     textTransform: "uppercase",
-    marginBottom: 6,
   },
   reminderService: { color: "#FFF", fontSize: 15, fontWeight: "700", marginBottom: 2 },
   reminderDetail: { color: "#888", fontSize: 13, marginTop: 2 },
+  reminderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  reminderCounter: { color: "#555", fontSize: 11, fontWeight: "700" },
+  reminderNav: { flexDirection: "row", gap: 16, marginTop: 10 },
+  reminderNavBtn: {
+    ...(Platform.OS === "web" ? { cursor: "pointer" as any } : {}),
+  },
+  reminderNavText: { color: "#D4AF37", fontSize: 13, fontWeight: "700" },
   reminderClose: {
     paddingHorizontal: 6,
     paddingVertical: 2,
