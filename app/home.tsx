@@ -274,6 +274,7 @@ export default function Home() {
         {appDomani.length > 0 && (() => {
           const app = appDomani[reminderIdx];
           return (
+            <Animated.View style={{ opacity: mainCardOp, transform: [{ translateY: mainCardY }] }}>
             <View style={s.reminderBanner}>
               <Text style={s.reminderIcon}>🔔</Text>
               <View style={s.reminderBody}>
@@ -319,6 +320,7 @@ export default function Home() {
                 <Text style={s.reminderCloseText}>✕</Text>
               </Pressable>
             </View>
+            </Animated.View>
           );
         })()}
 
