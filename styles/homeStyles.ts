@@ -6,13 +6,7 @@ export const SHEET_H = SH * 0.85;
 
 export const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0A0A0A" },
-  scroll: {
-    padding: 24,
-    paddingBottom: 40,
-    ...(Platform.OS === "web"
-      ? { maxWidth: 480, alignSelf: "center" as any, width: "100%" }
-      : {}),
-  },
+  scroll: { padding: 24, paddingBottom: 40 },
 
   // Header
   header: {
@@ -109,7 +103,9 @@ export const s = StyleSheet.create({
   // Grid
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   gridCard: {
-    width: "48%" as any,
+    flexBasis: "45%" as any,
+    flexGrow: 1,
+    flexShrink: 0,
     backgroundColor: "#141414",
     borderWidth: 1,
     borderColor: "#1E1E1E",
@@ -118,7 +114,9 @@ export const s = StyleSheet.create({
     ...(Platform.OS === "web" ? { cursor: "pointer" } : {}),
   },
   gridCardMsg: {
-    width: "48%" as any,
+    flexBasis: "45%" as any,
+    flexGrow: 1,
+    flexShrink: 0,
     backgroundColor: "#141414",
     borderWidth: 1,
     borderColor: "#1E1E1E",
