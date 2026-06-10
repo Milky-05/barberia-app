@@ -241,7 +241,7 @@ export default function Login() {
   };
 
   const verificaOtp = async () => {
-    if (otpCode.trim().length !== 6) { setErrore("Inserisci il codice di 6 cifre"); return; }
+    if (otpCode.trim().length < 6) { setErrore("Inserisci il codice ricevuto per intero"); return; }
     setErrore("");
     setLoading(true);
     const { error } = await supabase.auth.verifyOtp({
@@ -460,28 +460,28 @@ export default function Login() {
               <>
                 <Text style={s.stepTitle}>Controlla la tua email</Text>
                 <Text style={s.stepDesc}>
-                  Abbiamo inviato un codice di 6 cifre a{"\n"}
+                  Abbiamo inviato un codice di accesso a{"\n"}
                   <Text style={{ color: "#D4AF37" }}>{email}</Text>
                 </Text>
 
                 <Text style={s.label}>CODICE DI VERIFICA</Text>
                 <TextInput
-                  style={[s.input, { textAlign: "center", fontSize: 26, letterSpacing: 10, fontWeight: "800" }]}
+                  style={[s.input, { textAlign: "center", fontSize: 26, letterSpacing: 8, fontWeight: "800" }]}
                   value={otpCode}
-                  onChangeText={(t) => setOtpCode(t.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
+                  onChangeText={(t) => setOtpCode(t.replace(/\D/g, "").slice(0, 8))}
+                  placeholder="00000000"
                   placeholderTextColor="#333"
                   keyboardType="number-pad"
-                  maxLength={6}
+                  maxLength={8}
                   autoFocus
                 />
 
                 {errore ? <Text style={s.errore}>{errore}</Text> : null}
 
                 <Pressable
-                  style={[s.btn, (loading || otpCode.length !== 6) && { opacity: 0.5 }]}
+                  style={[s.btn, (loading || otpCode.length < 6) && { opacity: 0.5 }]}
                   onPress={verificaOtp}
-                  disabled={loading || otpCode.length !== 6}
+                  disabled={loading || otpCode.length < 6}
                 >
                   {loading
                     ? <ActivityIndicator color="#0A0A0A" size="small" />
