@@ -222,7 +222,7 @@ export default function Login() {
     });
 
     if (error) {
-      setErrore("Errore durante la registrazione. Riprova.");
+      setErrore(error.message || "Errore durante la registrazione. Riprova.");
       setLoading(false);
       return;
     }
