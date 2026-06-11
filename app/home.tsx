@@ -424,12 +424,11 @@ export default function Home() {
             <Text style={s.gridSub}>Comunicazioni dallo staff</Text>
           </Pressable>
         </View>
+          <View style={s.footerBox}>
+            <View style={s.footerLine} />
+            <Text style={s.footerText}>PRENOTA IL TUO STILE</Text>
+          </View>
         </Animated.View>
-
-        <View style={s.footerBox}>
-          <View style={s.footerLine} />
-          <Text style={s.footerText}>PRENOTA IL TUO STILE</Text>
-        </View>
       </ScrollView>
 
       {sheetVisible && (
