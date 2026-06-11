@@ -42,43 +42,34 @@ export default function Home() {
   const mainCardY = useRef(new Animated.Value(30)).current;
   const gridOp = useRef(new Animated.Value(0)).current;
   const gridY = useRef(new Animated.Value(30)).current;
+  const hasAnimated = useRef(false);
+  const fallbackTimer = useRef<any>(null);
+
+  const startCardAnimations = () => {
+    if (hasAnimated.current) return;
+    hasAnimated.current = true;
+    if (fallbackTimer.current) clearTimeout(fallbackTimer.current);
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(mainCardOp, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(mainCardY, { toValue: 0, friction: 6, useNativeDriver: true }),
+      ]).start();
+    }, 150);
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(gridOp, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(gridY, { toValue: 0, friction: 6, useNativeDriver: true }),
+      ]).start();
+    }, 400);
+  };
 
   useEffect(() => {
     caricaUtente();
     contaNotifiche();
-    Animated.timing(headerOp, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(mainCardOp, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.spring(mainCardY, {
-          toValue: 0,
-          friction: 6,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 300);
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(gridOp, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.spring(gridY, {
-          toValue: 0,
-          friction: 6,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 550);
+    Animated.timing(headerOp, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    // Fallback: avvia le animazioni dopo 900ms se l'API è lenta (cold start Render)
+    fallbackTimer.current = setTimeout(startCardAnimations, 900);
+    return () => { if (fallbackTimer.current) clearTimeout(fallbackTimer.current); };
   }, []);
 
   const caricaUtente = async () => {
@@ -137,6 +128,7 @@ export default function Home() {
         await contaAppuntamenti();
         if (visti) setNumAppuntamenti(0);
         contaNotifiche();
+        startCardAnimations(); // avvia animazioni ora che i dati sono pronti (no-op se già avviate)
       };
       ricarica();
     }, []),
