@@ -83,6 +83,7 @@ export default function AdminDashboard() {
   const [showCalendario, setShowCalendario] = useState(false);
   const [showAggiungi, setShowAggiungi] = useState(false);
   const [newCliente, setNewCliente] = useState("");
+  const [newTelefono, setNewTelefono] = useState("");
   const [newBarbiere, setNewBarbiere] = useState(0);
   const [newServizio, setNewServizio] = useState(0);
   const [newOra, setNewOra] = useState("");
@@ -239,6 +240,7 @@ export default function AdminDashboard() {
     setNewBarbiere(p?.id || 0);
     setNewServizio(ps?.id || 0);
     setNewCliente("");
+    setNewTelefono("");
     setNewOra("");
     setShowAggiungi(true);
     if (p && ps) caricaOrariNuovo(p.id, ps.id);
@@ -260,6 +262,7 @@ export default function AdminDashboard() {
           sede_id: sedeCorrente,
           barbiere_id: newBarbiere,
           cliente_nome: newCliente,
+          cliente_telefono: newTelefono || undefined,
           data: dataCorrente,
           ora: newOra,
           servizio_id: newServizio,
@@ -269,6 +272,7 @@ export default function AdminDashboard() {
       if (data.success) {
         setShowAggiungi(false);
         setNewCliente("");
+        setNewTelefono("");
         caricaPrenotazioni();
       } else msg(data.error);
     } catch (err) {
@@ -1115,6 +1119,15 @@ export default function AdminDashboard() {
                 onChangeText={setNewCliente}
                 placeholder="Nome e cognome"
                 placeholderTextColor="#333"
+              />
+              <Text style={st.mLabel}>TELEFONO <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale)</Text></Text>
+              <TextInput
+                style={st.mInput}
+                value={newTelefono}
+                onChangeText={setNewTelefono}
+                placeholder="Es: 333 1234567"
+                placeholderTextColor="#333"
+                keyboardType="phone-pad"
               />
               <Text style={st.mLabel}>BARBIERE</Text>
               <View style={st.mGrid}>
