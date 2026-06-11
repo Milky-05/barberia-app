@@ -104,12 +104,21 @@ export default function Home() {
       if (!Array.isArray(data)) return;
       setNumAppuntamenti(data.length);
 
-      const domani = new Date();
-      domani.setDate(domani.getDate() + 1);
+      const adesso = new Date();
+      const oggiStr = adesso.toISOString().split("T")[0];
+      const oraCorrente = adesso.toTimeString().slice(0, 5);
+      const domani = new Date(adesso);
+      domani.setDate(adesso.getDate() + 1);
       const domaniStr = domani.toISOString().split("T")[0];
+
       const trovati = data.filter((a: any) => {
-        const d = new Date(a.data).toISOString().split("T")[0];
-        return d === domaniStr;
+        const appDateStr = new Date(a.data).toISOString().split("T")[0];
+        if (appDateStr === domaniStr) return true;
+        if (appDateStr === oggiStr) {
+          const appOra = (a.ora ?? "23:59").slice(0, 5);
+          return appOra > oraCorrente;
+        }
+        return false;
       });
       const nonDismissi: any[] = [];
       for (const a of trovati) {
@@ -272,7 +281,11 @@ export default function Home() {
               <View style={s.reminderBody}>
                 <View style={s.reminderHeader}>
                   <Text style={s.reminderTitle}>
-                    {appDomani.length === 1 ? "APPUNTAMENTO DOMANI" : "APPUNTAMENTI DOMANI"}
+                    {(() => {
+                      const isOggi = new Date(app.data).toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
+                      const giorno = isOggi ? "OGGI" : "DOMANI";
+                      return appDomani.length === 1 ? `APPUNTAMENTO ${giorno}` : `APPUNTAMENTI ${giorno}`;
+                    })()}
                   </Text>
                   {appDomani.length > 1 && (
                     <Text style={s.reminderCounter}>{reminderIdx + 1}/{appDomani.length}</Text>
