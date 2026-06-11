@@ -130,28 +130,25 @@ export default function Home() {
     } catch (err) {}
   };
 
-  // Rimuove automaticamente gli appuntamenti di oggi una volta passato l'orario
+  // Rimuove ogni appuntamento di oggi esattamente all'orario preciso
   useEffect(() => {
-    const hasOggi = appDomani.some(
-      (a) => new Date(a.data).toISOString().split("T")[0] === new Date().toISOString().split("T")[0]
-    );
-    if (!hasOggi) return;
+    const adesso = new Date();
+    const oggiStr = adesso.toISOString().split("T")[0];
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    const timer = setInterval(() => {
-      const adesso = new Date();
-      const oggiStr = adesso.toISOString().split("T")[0];
-      const oraCorrente = adesso.toTimeString().slice(0, 5);
-      setAppDomani((prev) => {
-        const aggiornati = prev.filter((a) => {
-          const appDateStr = new Date(a.data).toISOString().split("T")[0];
-          if (appDateStr !== oggiStr) return true;
-          return (a.ora ?? "23:59").slice(0, 5) > oraCorrente;
-        });
-        return aggiornati.length !== prev.length ? aggiornati : prev;
-      });
-    }, 60000);
+    appDomani.forEach((a) => {
+      if (new Date(a.data).toISOString().split("T")[0] !== oggiStr) return;
+      const [h, m] = (a.ora ?? "23:59").slice(0, 5).split(":").map(Number);
+      const scadenza = new Date(adesso);
+      scadenza.setHours(h, m, 0, 0);
+      const delay = scadenza.getTime() - adesso.getTime();
+      if (delay <= 0) return;
+      timers.push(
+        setTimeout(() => setAppDomani((prev) => prev.filter((x) => x.id !== a.id)), delay)
+      );
+    });
 
-    return () => clearInterval(timer);
+    return () => timers.forEach(clearTimeout);
   }, [appDomani]);
 
   useFocusEffect(
