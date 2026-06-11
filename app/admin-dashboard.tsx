@@ -88,6 +88,8 @@ export default function AdminDashboard() {
   const [orariNuovo, setOrariNuovo] = useState<string[]>([]);
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
+  const [showPermesso, setShowPermesso] = useState(false);
+  const [permessoOre, setPermessoOre] = useState(1);
   const [showModifica, setShowModifica] = useState(false);
   const [modificaApp, setModificaApp] = useState<any>(null);
   const [modNome, setModNome] = useState("");
@@ -344,6 +346,25 @@ export default function AdminDashboard() {
       msg("Errore");
     }
   };
+  const segnaPermesso = async () => {
+    if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-permesso`, {
+        method: "POST",
+        headers: auth(),
+        body: JSON.stringify({ barbiere_id: assenzaBarbiere, ore: permessoOre }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        msg(data.messaggio);
+        setShowPermesso(false);
+        caricaBarbieri();
+      } else msg(data.error);
+    } catch (err) {
+      msg("Errore");
+    }
+  };
+
   const riattiva = async (id: number) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-presente`, {
@@ -635,21 +656,24 @@ export default function AdminDashboard() {
               </View>
             </View>
 
-            {barbieriAssenti.map((b) => (
-              <View key={b.id} style={st.absCard}>
-                <Text style={st.absText}>🔴 {b.nome} è assente</Text>
-                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                  <Text style={st.absBtnText}>Riattiva</Text>
-                </Pressable>
-              </View>
-            ))}
+            {barbieriAssenti.map((b) => {
+              const isPermesso = b.motivo_assenza?.startsWith("permesso:");
+              return (
+                <View key={b.id} style={st.absCard}>
+                  <Text style={st.absText}>{isPermesso ? "🟡" : "🔴"} {b.nome} {isPermesso ? "è in permesso" : "è assente"}</Text>
+                  <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                    <Text style={st.absBtnText}>Riattiva</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
 
             <View style={[st.actRow, { marginTop: 16 }]}>
-              <Pressable style={st.actGold} onPress={apriModalAggiungi}>
-                <Text style={st.actGoldText}>+ Nuovo Appuntamento</Text>
-              </Pressable>
               <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setShowAssenza(true); }}>
                 <Text style={st.actRedText}>🔴 Assente</Text>
+              </Pressable>
+              <Pressable style={st.actOrange} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setPermessoOre(1); setShowPermesso(true); }}>
+                <Text style={st.actOrangeText}>🕐 Permesso</Text>
               </Pressable>
             </View>
           </>
@@ -725,14 +749,17 @@ export default function AdminDashboard() {
               </Pressable>
             </View>
 
-            {barbieriAssenti.map((b) => (
-              <View key={b.id} style={st.absCard}>
-                <Text style={st.absText}>🔴 {b.nome} è assente</Text>
-                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                  <Text style={st.absBtnText}>Riattiva</Text>
-                </Pressable>
-              </View>
-            ))}
+            {barbieriAssenti.map((b) => {
+              const isPermesso = b.motivo_assenza?.startsWith("permesso:");
+              return (
+                <View key={b.id} style={st.absCard}>
+                  <Text style={st.absText}>{isPermesso ? "🟡" : "🔴"} {b.nome} {isPermesso ? "è in permesso" : "è assente"}</Text>
+                  <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                    <Text style={st.absBtnText}>Riattiva</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
             {orariGiornata.length === 0 ? (
               <View style={st.emptyBox}>
                 <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
@@ -1176,6 +1203,64 @@ export default function AdminDashboard() {
                 >
                   Conferma
                 </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* MODAL PERMESSO */}
+      {showPermesso && (
+        <View style={st.modalOv}>
+          <View style={st.modal}>
+            <Text style={st.mTitle}>🕐 Permesso Temporaneo</Text>
+            <Text style={{ color: "#888", fontSize: 13, marginBottom: 20, textAlign: "center" }}>
+              Il barbiere sarà in permesso per il tempo selezionato.{"\n"}Gli appuntamenti esistenti non vengono cancellati.
+            </Text>
+
+            <Text style={[st.mLabel, { marginBottom: 12 }]}>DURATA PERMESSO</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
+              {[1, 2, 3, 4, 5, 6].map((h) => (
+                <Pressable
+                  key={h}
+                  style={[st.oreBtn, permessoOre === h && st.oreBtnA]}
+                  onPress={() => setPermessoOre(h)}
+                >
+                  <Text style={[st.oreBtnText, permessoOre === h && st.oreBtnTextA]}>
+                    {h}h
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {barbieri.length > 1 && (
+              <>
+                <Text style={[st.mLabel, { marginBottom: 8 }]}>BARBIERE</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+                  {barbieri.filter((b) => !b.assente).map((b) => (
+                    <Pressable
+                      key={b.id}
+                      style={[st.filtroItem, assenzaBarbiere === b.id && st.filtroItemA, { borderRadius: 10, borderWidth: 1, borderColor: "#222", paddingHorizontal: 14, paddingVertical: 8 }]}
+                      onPress={() => setAssenzaBarbiere(b.id)}
+                    >
+                      <Text style={[st.filtroItemText, assenzaBarbiere === b.id && st.filtroItemTextA]}>
+                        {b.nome}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <View style={st.mBtnRow}>
+              <Pressable style={st.mCancel} onPress={() => setShowPermesso(false)}>
+                <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
+              </Pressable>
+              <Pressable
+                style={[st.mConfirm, { backgroundColor: "#E5734A" }]}
+                onPress={segnaPermesso}
+              >
+                <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
               </Pressable>
             </View>
           </View>
