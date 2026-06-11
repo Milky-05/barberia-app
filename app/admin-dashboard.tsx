@@ -1700,6 +1700,15 @@ export default function AdminDashboard() {
                   <Text style={st.detailValue}>{fmtDataLunga(dataCorrente)} • {appDetail.ora?.slice(0, 5)}</Text>
                 </View>
               </View>
+              {appDetail.cliente_telefono && (
+                <View style={st.detailRow}>
+                  <View style={st.detailIconBox}><Text style={{ fontSize: 18 }}>📞</Text></View>
+                  <View>
+                    <Text style={st.detailLabel}>TELEFONO</Text>
+                    <Text style={st.detailValue}>{appDetail.cliente_telefono}</Text>
+                  </View>
+                </View>
+              )}
             </View>
             <View style={st.detailBtns}>
               <Pressable

@@ -206,6 +206,8 @@ export default function Login() {
       return;
     }
     if (!nome.trim()) { setErrore("Il nome è obbligatorio"); return; }
+    if (!cognome.trim()) { setErrore("Il cognome è obbligatorio"); return; }
+    if (!telefono.trim()) { setErrore("Il numero di telefono è obbligatorio"); return; }
     setErrore("");
     setLoading(true);
 
@@ -394,7 +396,7 @@ export default function Login() {
                     />
                   </View>
                   <View style={s.halfField}>
-                    <Text style={s.label}>Cognome</Text>
+                    <Text style={s.label}>Cognome *</Text>
                     <TextInput
                       style={s.input}
                       value={cognome}
@@ -404,7 +406,7 @@ export default function Login() {
                     />
                   </View>
                 </View>
-                <Text style={s.label}>Telefono</Text>
+                <Text style={s.label}>Telefono *</Text>
                 <TextInput
                   style={s.input}
                   value={telefono}

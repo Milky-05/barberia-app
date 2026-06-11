@@ -86,7 +86,7 @@ export default function Home() {
             u = json.utente;
           } else {
             const meta = session.user?.user_metadata;
-            if (meta?.nome) u = { ...u, nome: meta.nome, cognome: meta.cognome };
+            if (meta?.nome) u = { ...u, nome: meta.nome, cognome: meta.cognome, telefono: meta.telefono || u.telefono };
           }
           await AsyncStorage.setItem("utente", JSON.stringify(u));
         }
@@ -304,7 +304,7 @@ export default function Home() {
               <Text style={s.brandText}>BULLDOG BARBER SHOP</Text>
             </View>
             <Text style={s.greeting}>Bentornato,</Text>
-            <Text style={s.greetingName}>{utente?.nome || ""}!</Text>
+            <Text style={s.greetingName}>{[utente?.nome, utente?.cognome].filter(Boolean).join(" ")}!</Text>
           </View>
           <Pressable style={s.profileBtn} onPress={apriSheet}>
             <Text style={s.profileIcon}>👤</Text>
