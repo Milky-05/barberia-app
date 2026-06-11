@@ -140,12 +140,12 @@ export default function AdminDashboard() {
         router.replace("/");
         return;
       }
-      const { data: profilo } = await supabase
-        .from("profili")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-      const u = { ...profilo, email: session.user.email };
+      const meRes = await fetch(`${BACKEND_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      });
+      if (!meRes.ok) { router.replace("/"); return; }
+      const meData = await meRes.json();
+      const u = { ...meData.utente, email: session.user.email };
       setToken(session.access_token);
       setUtente(u);
       setEditNome(u.nome || "");
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
       const tutteSedi = await resSedi.json();
       setSedi(tutteSedi);
       if (tutteSedi.length > 0) setSedeCorrente(tutteSedi[0].id);
-      setFiltroBarbiere(u.id);
+      setFiltroBarbiere(u.barbiere_id || null);
       const resServ = await fetch(`${BACKEND_URL}/api/servizi`);
       setServizi(await resServ.json());
       setLoading(false);
