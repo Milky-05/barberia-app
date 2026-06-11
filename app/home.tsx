@@ -293,10 +293,10 @@ export default function Home() {
           </Pressable>
         </Animated.View>
 
+        <Animated.View style={{ opacity: mainCardOp, transform: [{ translateY: mainCardY }] }}>
         {appDomani.length > 0 && (() => {
           const app = appDomani[reminderIdx];
           return (
-            <Animated.View style={{ opacity: mainCardOp, transform: [{ translateY: mainCardY }] }}>
             <View style={s.reminderBanner}>
               <Text style={s.reminderIcon}>🔔</Text>
               <View style={s.reminderBody}>
@@ -346,17 +346,10 @@ export default function Home() {
                 <Text style={s.reminderCloseText}>✕</Text>
               </Pressable>
             </View>
-            </Animated.View>
           );
         })()}
 
         <Text style={s.sectionTitle}>— Prenota</Text>
-        <Animated.View
-          style={{
-            opacity: mainCardOp,
-            transform: [{ translateY: mainCardY }],
-          }}
-        >
           <Pressable
             style={({ pressed }) => [s.mainCard, pressed && s.mainCardPressed]}
             onPress={() => router.push("/scelta-sede" as any)}
@@ -375,13 +368,9 @@ export default function Home() {
           </Pressable>
         </Animated.View>
 
+        <Animated.View style={{ opacity: gridOp, transform: [{ translateY: gridY }] }}>
         <Text style={s.sectionTitle}>— Esplora</Text>
-        <Animated.View
-          style={[
-            s.grid,
-            { opacity: gridOp, transform: [{ translateY: gridY }] },
-          ]}
-        >
+        <View style={s.grid}>
           <Pressable
             style={({ pressed }) => [s.gridCard, pressed && s.gridCardPressed]}
             onPress={() => router.push("/miei-appuntamenti" as any)}
@@ -434,6 +423,7 @@ export default function Home() {
             <Text style={s.gridTitle}>Messaggi</Text>
             <Text style={s.gridSub}>Comunicazioni dallo staff</Text>
           </Pressable>
+        </View>
         </Animated.View>
 
         <View style={s.footerBox}>
