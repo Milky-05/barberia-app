@@ -75,6 +75,7 @@ export default function AdminDashboard() {
   const [prenotazioni, setPrenotazioni] = useState<any[]>([]);
   const [barbieri, setBarbieri] = useState<any[]>([]);
   const [barbieriAssenti, setBarbieriAssenti] = useState<any[]>([]);
+  const [barbieriProgrammati, setBarbieriProgrammati] = useState<any[]>([]);
   const [servizi, setServizi] = useState<any[]>([]);
   const [filtroBarbiere, setFiltroBarbiere] = useState<number | null>(null);
   const [showFiltri, setShowFiltri] = useState(false);
@@ -89,7 +90,11 @@ export default function AdminDashboard() {
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
   const [showPermesso, setShowPermesso] = useState(false);
-  const [permessoOre, setPermessoOre] = useState(1);
+  const [permessoMinuti, setPermessoMinuti] = useState(60);
+  const [assenzaData, setAssenzaData] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; });
+  const [assenzaGiorni, setAssenzaGiorni] = useState<number | null>(1);
+  const [permessoData, setPermessoData] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; });
+  const [permessoOraInizio, setPermessoOraInizio] = useState(() => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; });
   const [showModifica, setShowModifica] = useState(false);
   const [modificaApp, setModificaApp] = useState<any>(null);
   const [modNome, setModNome] = useState("");
@@ -181,6 +186,11 @@ export default function AdminDashboard() {
       const allBarb = await resAll.json();
       if (Array.isArray(allBarb)) {
         setBarbieriAssenti(allBarb.filter((b: any) => b.assente));
+        setBarbieriProgrammati(allBarb.filter((b: any) => {
+          if (b.assente || !b.motivo_assenza?.startsWith("{")) return false;
+          try { return JSON.parse(b.motivo_assenza).stato === "programmato"; }
+          catch { return false; }
+        }));
       }
     } catch (err) {
       setBarbieri([]);
@@ -316,14 +326,15 @@ export default function AdminDashboard() {
     );
   };
   const segnaAssente = async () => {
-    if (!assenzaBarbiere) {
-      msg("Seleziona un barbiere");
-      return;
-    }
+    if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
     const bN = barbieri.find((b) => b.id === assenzaBarbiere)?.nome || "";
-    if (Platform.OS === "web") {
-      if (!window.confirm(`Cancellare tutti gli appuntamenti di ${bN}?`))
-        return;
+    const oggi = new Date().toISOString().split("T")[0];
+    const isOggi = assenzaData <= oggi;
+    if (isOggi && Platform.OS === "web") {
+      const giorniTxt = assenzaGiorni
+        ? `${assenzaGiorni} ${assenzaGiorni === 1 ? "giorno" : "giorni"}`
+        : "tempo indeterminato";
+      if (!window.confirm(`Cancellare gli appuntamenti di ${bN} per ${giorniTxt}?`)) return;
     }
     try {
       const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-assente`, {
@@ -332,6 +343,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           barbiere_id: assenzaBarbiere,
           motivo: assenzaMotivo || "Assente",
+          data_inizio: assenzaData,
+          giorni: assenzaGiorni,
         }),
       });
       const data = await res.json();
@@ -342,9 +355,7 @@ export default function AdminDashboard() {
         caricaBarbieri();
         caricaPrenotazioni();
       } else msg(data.error);
-    } catch (err) {
-      msg("Errore");
-    }
+    } catch (err) { msg("Errore"); }
   };
   const segnaPermesso = async () => {
     if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
@@ -352,7 +363,12 @@ export default function AdminDashboard() {
       const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-permesso`, {
         method: "POST",
         headers: auth(),
-        body: JSON.stringify({ barbiere_id: assenzaBarbiere, ore: permessoOre }),
+        body: JSON.stringify({
+          barbiere_id: assenzaBarbiere,
+          data_inizio: permessoData,
+          ora_inizio: permessoOraInizio,
+          minuti: permessoMinuti,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -360,9 +376,7 @@ export default function AdminDashboard() {
         setShowPermesso(false);
         caricaBarbieri();
       } else msg(data.error);
-    } catch (err) {
-      msg("Errore");
-    }
+    } catch (err) { msg("Errore"); }
   };
 
   const riattiva = async (id: number) => {
@@ -477,6 +491,11 @@ export default function AdminDashboard() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   })();
+  const domaniStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  })();
 
   const getWeekDays = () => {
     const [y, m, d] = dataCorrente.split("-").map(Number);
@@ -536,6 +555,28 @@ export default function AdminDashboard() {
       "Dicembre",
     ];
     return `${g[dt.getDay()]} ${dt.getDate()} ${m[dt.getMonth()]}`;
+  };
+  const fmtDurata = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return `${m}min`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}min`;
+  };
+  const fmtDataShort = (s: string) => {
+    try {
+      const d = new Date(s + "T12:00:00Z");
+      return d.toLocaleDateString("it-IT", { day: "numeric", month: "long" });
+    } catch { return s; }
+  };
+  const isPermessoBarbiere = (b: any) => {
+    if (!b.motivo_assenza) return false;
+    if (b.motivo_assenza.startsWith("permesso:")) return true;
+    if (b.motivo_assenza.startsWith("{")) {
+      try { return JSON.parse(b.motivo_assenza).tipo === "permesso"; }
+      catch { return false; }
+    }
+    return false;
   };
 
   if (loading)
@@ -656,23 +697,46 @@ export default function AdminDashboard() {
               </View>
             </View>
 
-            {barbieriAssenti.map((b) => {
-              const isPermesso = b.motivo_assenza?.startsWith("permesso:");
+            {barbieriAssenti.map((b) => (
+              <View key={b.id} style={st.absCard}>
+                <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
+                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                  <Text style={st.absBtnText}>Riattiva</Text>
+                </Pressable>
+              </View>
+            ))}
+            {barbieriProgrammati.map((b) => {
+              const info = JSON.parse(b.motivo_assenza);
+              const dataInizio = info.tipo === "permesso"
+                ? new Date(info.inizio).toISOString().split("T")[0]
+                : info.inizio;
               return (
-                <View key={b.id} style={st.absCard}>
-                  <Text style={st.absText}>{isPermesso ? "🟡" : "🔴"} {b.nome} {isPermesso ? "è in permesso" : "è assente"}</Text>
+                <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)" }]}>
+                  <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {info.tipo === "permesso" ? "permesso" : "assenza"} prog. il {fmtDataShort(dataInizio)}</Text>
                   <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                    <Text style={st.absBtnText}>Riattiva</Text>
+                    <Text style={st.absBtnText}>Annulla</Text>
                   </Pressable>
                 </View>
               );
             })}
 
             <View style={[st.actRow, { marginTop: 16 }]}>
-              <Pressable style={st.actRed} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setShowAssenza(true); }}>
+              <Pressable style={st.actRed} onPress={() => {
+                setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
+                setAssenzaData(todayStr);
+                setAssenzaGiorni(1);
+                setShowAssenza(true);
+              }}>
                 <Text style={st.actRedText}>🔴 Assente</Text>
               </Pressable>
-              <Pressable style={st.actOrange} onPress={() => { setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0); setPermessoOre(1); setShowPermesso(true); }}>
+              <Pressable style={st.actOrange} onPress={() => {
+                setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
+                const now = new Date();
+                setPermessoOraInizio(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);
+                setPermessoData(todayStr);
+                setPermessoMinuti(60);
+                setShowPermesso(true);
+              }}>
                 <Text style={st.actOrangeText}>🕐 Permesso</Text>
               </Pressable>
             </View>
@@ -749,13 +813,24 @@ export default function AdminDashboard() {
               </Pressable>
             </View>
 
-            {barbieriAssenti.map((b) => {
-              const isPermesso = b.motivo_assenza?.startsWith("permesso:");
+            {barbieriAssenti.map((b) => (
+              <View key={b.id} style={st.absCard}>
+                <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
+                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                  <Text style={st.absBtnText}>Riattiva</Text>
+                </Pressable>
+              </View>
+            ))}
+            {barbieriProgrammati.map((b) => {
+              const info = JSON.parse(b.motivo_assenza);
+              const dataInizio = info.tipo === "permesso"
+                ? new Date(info.inizio).toISOString().split("T")[0]
+                : info.inizio;
               return (
-                <View key={b.id} style={st.absCard}>
-                  <Text style={st.absText}>{isPermesso ? "🟡" : "🔴"} {b.nome} {isPermesso ? "è in permesso" : "è assente"}</Text>
+                <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)" }]}>
+                  <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {info.tipo === "permesso" ? "permesso" : "assenza"} prog. il {fmtDataShort(dataInizio)}</Text>
                   <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                    <Text style={st.absBtnText}>Riattiva</Text>
+                    <Text style={st.absBtnText}>Annulla</Text>
                   </Pressable>
                 </View>
               );
@@ -1144,37 +1219,73 @@ export default function AdminDashboard() {
         <View style={st.modalOv}>
           <View style={st.modal}>
             <Text style={st.mTitle}>🔴 Segna Assente</Text>
-            <Text
-              style={{
-                color: "#F44336",
-                fontSize: 13,
-                marginBottom: 16,
-                lineHeight: 18,
-              }}
-            >
-              Tutti gli appuntamenti verranno cancellati e i clienti notificati.
-            </Text>
-            <Text style={st.mLabel}>BARBIERE</Text>
-            <View style={st.mGrid}>
-              {barbieri
-                .filter((b) => !b.assente)
-                .map((b) => (
-                  <Pressable
-                    key={b.id}
-                    style={[st.mChip, assenzaBarbiere === b.id && st.mChipA]}
-                    onPress={() => setAssenzaBarbiere(b.id)}
-                  >
-                    <Text
-                      style={[
-                        st.mChipText,
-                        assenzaBarbiere === b.id && st.mChipTextA,
-                      ]}
-                    >
-                      {b.nome}
-                    </Text>
-                  </Pressable>
-                ))}
+
+            <Text style={st.mLabel}>DATA</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+              {[{ label: "Oggi", val: todayStr }, { label: "Domani", val: domaniStr }].map(({ label, val }) => (
+                <Pressable
+                  key={label}
+                  style={[st.oreBtn, assenzaData === val && st.oreBtnA, { flex: 1 }]}
+                  onPress={() => setAssenzaData(val)}
+                >
+                  <Text style={[st.oreBtnText, assenzaData === val && st.oreBtnTextA]}>{label}</Text>
+                </Pressable>
+              ))}
             </View>
+            {Platform.OS === "web" ? (
+              // @ts-ignore
+              <input
+                type="date"
+                value={assenzaData}
+                onChange={(e: any) => setAssenzaData(e.target.value)}
+                min={todayStr}
+                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box" }}
+              />
+            ) : (
+              <TextInput
+                style={[st.mInput, { marginBottom: 16 }]}
+                value={assenzaData}
+                onChangeText={setAssenzaData}
+                placeholder="AAAA-MM-GG"
+                placeholderTextColor="#333"
+                keyboardType="numbers-and-punctuation"
+              />
+            )}
+
+            <Text style={st.mLabel}>DURATA</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {([1, 2, 3, 7] as number[]).map((g) => (
+                <Pressable
+                  key={g}
+                  style={[st.oreBtn, assenzaGiorni === g && st.oreBtnA]}
+                  onPress={() => setAssenzaGiorni(g)}
+                >
+                  <Text style={[st.oreBtnText, assenzaGiorni === g && st.oreBtnTextA]}>
+                    {g === 7 ? "1 sett." : `${g}g`}
+                  </Text>
+                </Pressable>
+              ))}
+              <Pressable
+                style={[st.oreBtn, assenzaGiorni === null && st.oreBtnA]}
+                onPress={() => setAssenzaGiorni(null)}
+              >
+                <Text style={[st.oreBtnText, assenzaGiorni === null && st.oreBtnTextA]}>Indeterminata</Text>
+              </Pressable>
+            </View>
+
+            {barbieri.filter((b) => !b.assente).length > 1 && (
+              <>
+                <Text style={st.mLabel}>BARBIERE</Text>
+                <View style={st.mGrid}>
+                  {barbieri.filter((b) => !b.assente).map((b) => (
+                    <Pressable key={b.id} style={[st.mChip, assenzaBarbiere === b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}>
+                      <Text style={[st.mChipText, assenzaBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+
             <Text style={st.mLabel}>MOTIVO</Text>
             <TextInput
               style={st.mInput}
@@ -1183,26 +1294,23 @@ export default function AdminDashboard() {
               placeholder="Es: Malato..."
               placeholderTextColor="#333"
             />
+
+            {assenzaData <= todayStr ? (
+              <Text style={{ color: "#F44336", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+                {`Gli appuntamenti${assenzaGiorni ? ` dei prossimi ${assenzaGiorni > 1 ? `${assenzaGiorni} giorni` : "giorno"}` : ""} verranno cancellati e i clienti notificati.`}
+              </Text>
+            ) : (
+              <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+                {`L'assenza verrà attivata automaticamente il ${fmtDataShort(assenzaData)}.`}
+              </Text>
+            )}
+
             <View style={st.mBtns}>
-              <Pressable
-                style={st.mCancel}
-                onPress={() => setShowAssenza(false)}
-              >
-                <Text
-                  style={{ color: "#666", fontWeight: "700", fontSize: 14 }}
-                >
-                  Annulla
-                </Text>
+              <Pressable style={st.mCancel} onPress={() => setShowAssenza(false)}>
+                <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
               </Pressable>
-              <Pressable
-                style={[st.mConfirm, { backgroundColor: "#F44336" }]}
-                onPress={segnaAssente}
-              >
-                <Text
-                  style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}
-                >
-                  Conferma
-                </Text>
+              <Pressable style={[st.mConfirm, { backgroundColor: "#F44336" }]} onPress={segnaAssente}>
+                <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
               </Pressable>
             </View>
           </View>
@@ -1214,52 +1322,109 @@ export default function AdminDashboard() {
         <View style={st.modalOv}>
           <View style={st.modal}>
             <Text style={st.mTitle}>🕐 Permesso Temporaneo</Text>
-            <Text style={{ color: "#888", fontSize: 13, marginBottom: 20, textAlign: "center" }}>
-              Il barbiere sarà in permesso per il tempo selezionato.{"\n"}Gli appuntamenti esistenti non vengono cancellati.
+            <Text style={{ color: "#888", fontSize: 12, marginBottom: 16, textAlign: "center" }}>
+              Gli appuntamenti esistenti non vengono cancellati.
             </Text>
 
-            <Text style={[st.mLabel, { marginBottom: 12 }]}>DURATA PERMESSO</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 }}>
-              {[1, 2, 3, 4, 5, 6].map((h) => (
+            <Text style={st.mLabel}>DATA</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+              {[{ label: "Oggi", val: todayStr }, { label: "Domani", val: domaniStr }].map(({ label, val }) => (
                 <Pressable
-                  key={h}
-                  style={[st.oreBtn, permessoOre === h && st.oreBtnA]}
-                  onPress={() => setPermessoOre(h)}
+                  key={label}
+                  style={[st.oreBtn, permessoData === val && st.oreBtnA, { flex: 1 }]}
+                  onPress={() => setPermessoData(val)}
                 >
-                  <Text style={[st.oreBtnText, permessoOre === h && st.oreBtnTextA]}>
-                    {h}h
-                  </Text>
+                  <Text style={[st.oreBtnText, permessoData === val && st.oreBtnTextA]}>{label}</Text>
                 </Pressable>
               ))}
+            </View>
+            {Platform.OS === "web" ? (
+              // @ts-ignore
+              <input
+                type="date"
+                value={permessoData}
+                onChange={(e: any) => setPermessoData(e.target.value)}
+                min={todayStr}
+                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box" }}
+              />
+            ) : (
+              <TextInput
+                style={[st.mInput, { marginBottom: 14 }]}
+                value={permessoData}
+                onChangeText={setPermessoData}
+                placeholder="AAAA-MM-GG"
+                placeholderTextColor="#333"
+                keyboardType="numbers-and-punctuation"
+              />
+            )}
+
+            <Text style={st.mLabel}>ORARIO INIZIO</Text>
+            {Platform.OS === "web" ? (
+              // @ts-ignore
+              <input
+                type="time"
+                value={permessoOraInizio}
+                onChange={(e: any) => setPermessoOraInizio(e.target.value)}
+                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box" }}
+              />
+            ) : (
+              <TextInput
+                style={[st.mInput, { marginBottom: 16 }]}
+                value={permessoOraInizio}
+                onChangeText={setPermessoOraInizio}
+                placeholder="HH:MM"
+                placeholderTextColor="#333"
+                keyboardType="numbers-and-punctuation"
+              />
+            )}
+
+            <Text style={st.mLabel}>DURATA</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 20 }}>
+              <Pressable
+                style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]}
+                onPress={() => setPermessoMinuti((p) => Math.max(30, p - 30))}
+              >
+                <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>−</Text>
+              </Pressable>
+              <Text style={{ color: "#FFF", fontSize: 22, fontWeight: "800", minWidth: 110, textAlign: "center" }}>
+                {fmtDurata(permessoMinuti)}
+              </Text>
+              <Pressable
+                style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]}
+                onPress={() => setPermessoMinuti((p) => Math.min(480, p + 30))}
+              >
+                <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>+</Text>
+              </Pressable>
             </View>
 
             {barbieri.length > 1 && (
               <>
                 <Text style={[st.mLabel, { marginBottom: 8 }]}>BARBIERE</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                   {barbieri.filter((b) => !b.assente).map((b) => (
                     <Pressable
                       key={b.id}
                       style={[st.filtroItem, assenzaBarbiere === b.id && st.filtroItemA, { borderRadius: 10, borderWidth: 1, borderColor: "#222", paddingHorizontal: 14, paddingVertical: 8 }]}
                       onPress={() => setAssenzaBarbiere(b.id)}
                     >
-                      <Text style={[st.filtroItemText, assenzaBarbiere === b.id && st.filtroItemTextA]}>
-                        {b.nome}
-                      </Text>
+                      <Text style={[st.filtroItemText, assenzaBarbiere === b.id && st.filtroItemTextA]}>{b.nome}</Text>
                     </Pressable>
                   ))}
                 </View>
               </>
             )}
 
-            <View style={st.mBtnRow}>
+            {permessoData > todayStr && (
+              <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+                {`Il permesso verrà attivato automaticamente il ${fmtDataShort(permessoData)} alle ${permessoOraInizio}.`}
+              </Text>
+            )}
+
+            <View style={st.mBtns}>
               <Pressable style={st.mCancel} onPress={() => setShowPermesso(false)}>
                 <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
               </Pressable>
-              <Pressable
-                style={[st.mConfirm, { backgroundColor: "#E5734A" }]}
-                onPress={segnaPermesso}
-              >
+              <Pressable style={[st.mConfirm, { backgroundColor: "#E5734A" }]} onPress={segnaPermesso}>
                 <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
               </Pressable>
             </View>
