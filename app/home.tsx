@@ -73,7 +73,25 @@ export default function Home() {
   }, []);
 
   const caricaUtente = async () => {
-    const u = JSON.parse((await AsyncStorage.getItem("utente")) || "{}");
+    let u = JSON.parse((await AsyncStorage.getItem("utente")) || "{}");
+    if (!u.nome) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const json = await res.json();
+          if (json.utente?.nome) {
+            u = json.utente;
+          } else {
+            const meta = session.user?.user_metadata;
+            if (meta?.nome) u = { ...u, nome: meta.nome, cognome: meta.cognome };
+          }
+          await AsyncStorage.setItem("utente", JSON.stringify(u));
+        }
+      } catch {}
+    }
     setUtente(u);
     setEditNome(u.nome || "");
     setEditCognome(u.cognome || "");
