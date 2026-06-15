@@ -1003,7 +1003,7 @@ export default function AdminDashboard() {
                 </View>
               );
             })()
-            ) : (() => {
+            : (() => {
               /* Griglia con posizionamento assoluto: ogni slot = SLOT_H px.
                  Le card si estendono in altezza in base alla durata (20min=1 slot, 40min=2 slot…)
                  attraversando i separatori senza spezzarsi. */
