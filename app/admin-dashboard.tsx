@@ -527,6 +527,13 @@ export default function AdminDashboard() {
     setDataCorrente(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`);
   };
 
+  const shiftDay = (n: number) => {
+    const [y, m, d] = dataCorrente.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + n);
+    setDataCorrente(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`);
+  };
+
   const goToday = () => setDataCorrente(todayStr);
 
   const weekDays = getWeekDays();
@@ -697,13 +704,39 @@ export default function AdminDashboard() {
         {/* ══════════ HOME TAB ══════════ */}
         {activeTab === "home" && (
           <>
-            <View style={st.statRow}>
-              <View style={st.statCard}>
-                <Text style={st.statVal}>{attivi.length}</Text>
-                <Text style={st.statLbl}>Appuntamenti — {fmtDataLunga(dataCorrente)}</Text>
+            {/* Navigazione giorni */}
+            <View style={st.weekHeader}>
+              <Pressable style={st.weekArrow} onPress={() => shiftDay(-1)}>
+                <Text style={{ color: "#D4AF37", fontSize: 22 }}>‹</Text>
+              </Pressable>
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
+                  {dataCorrente === todayStr ? "Oggi — " : ""}{fmtDataLunga(dataCorrente)}
+                </Text>
+                {dataCorrente !== todayStr && (
+                  <Pressable onPress={goToday}>
+                    <Text style={{ color: "#D4AF37", fontSize: 12, marginTop: 2 }}>← Torna ad oggi</Text>
+                  </Pressable>
+                )}
               </View>
+              <Pressable style={st.weekArrow} onPress={() => shiftDay(1)}>
+                <Text style={{ color: "#D4AF37", fontSize: 22 }}>›</Text>
+              </Pressable>
             </View>
 
+            {/* Contatore appuntamenti */}
+            {orariGiornata.length > 0 && (
+              <View style={st.statRow}>
+                <View style={st.statCard}>
+                  <Text style={st.statVal}>{attivi.length}</Text>
+                  <Text style={st.statLbl}>
+                    {attivi.length === 1 ? "Appuntamento" : "Appuntamenti"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Barbieri assenti/programmati */}
             {barbieriAssenti.map((b) => (
               <View key={b.id} style={st.absCard}>
                 <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
@@ -726,6 +759,54 @@ export default function AdminDashboard() {
                 </View>
               );
             })}
+
+            {/* Giorno di chiusura o lista appuntamenti */}
+            {orariGiornata.length === 0 ? (
+              <View style={[st.emptyBox, { marginTop: 24 }]}>
+                <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+                <Text style={st.emptyText}>Giorno di chiusura</Text>
+              </View>
+            ) : attivi.length === 0 ? (
+              <View style={[st.emptyBox, { marginTop: 16 }]}>
+                <Text style={{ fontSize: 32, marginBottom: 10 }}>📭</Text>
+                <Text style={st.emptyText}>Nessun appuntamento</Text>
+              </View>
+            ) : (
+              <View style={{ marginTop: 8 }}>
+                {[...attivi]
+                  .sort((a, b) => (a.ora || "").localeCompare(b.ora || ""))
+                  .map((app) => (
+                    <Pressable
+                      key={app.id}
+                      onPress={() => setAppDetail(app)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: "#141414",
+                        borderRadius: 10,
+                        marginHorizontal: 16,
+                        marginBottom: 8,
+                        padding: 12,
+                        borderLeftWidth: 3,
+                        borderLeftColor: getBarbColor(app.barbiere_id),
+                      }}
+                    >
+                      <Text style={{ color: "#D4AF37", fontWeight: "800", fontSize: 15, width: 48 }}>
+                        {app.ora?.slice(0, 5)}
+                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 14 }}>
+                          {app.cliente_nome}
+                        </Text>
+                        <Text style={{ color: "#888", fontSize: 12, marginTop: 2 }}>
+                          {app.servizio_nome} · 💈 {app.barbiere_nome}
+                        </Text>
+                      </View>
+                      <Text style={{ color: "#555", fontSize: 16 }}>›</Text>
+                    </Pressable>
+                  ))}
+              </View>
+            )}
 
             <View style={[st.actRow, { marginTop: 16 }]}>
               <Pressable style={st.actRed} onPress={() => {
