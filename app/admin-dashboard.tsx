@@ -937,99 +937,72 @@ export default function AdminDashboard() {
                 <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
                 <Text style={st.emptyText}>Giorno di chiusura</Text>
               </View>
-            ) : prenotazioniPerBarbiere.length === 1 ? (
-              <View>
-                {(() => {
-                  const barbId = prenotazioniPerBarbiere[0].id;
-                  const color = getBarbColor(barbId);
-                  const righe: {
-                    ora: string;
-                    tipo: "libero" | "app20" | "app40";
-                    app?: any;
-                  }[] = [];
-                  const skipSet = new Set<string>();
+            ) : prenotazioniPerBarbiere.length === 1 ? (() => {
+              const screenW = Dimensions.get("window").width;
+              const isDesktop = screenW > 700;
+              const SLOT_H = isDesktop ? 80 : 64;
+              const ORA_W = isDesktop ? 64 : 52;
+              const FONT_ORA = isDesktop ? 14 : 12;
+              const FONT_NOME = isDesktop ? 13 : 11;
+              const FONT_SERV = isDesktop ? 12 : 10;
+              const FONT_DUR = isDesktop ? 11 : 10;
+              const totalH = orariGiornata.length * SLOT_H;
+              const barbId = prenotazioniPerBarbiere[0].id;
+              const color = getBarbColor(barbId);
+              const appsBarb = attivi.filter((p: any) => p.barbiere_id === barbId);
 
-                  orariGiornata.forEach((ora) => {
-                    if (skipSet.has(ora)) return;
-                    const stato = getSlotStato(barbId, ora);
-                    if (stato.tipo === "inizio") {
-                      const dur = stato.app.durata_minuti || 40;
-                      if (dur >= 40) {
-                        const idx = orariGiornata.indexOf(ora);
-                        if (idx + 1 < orariGiornata.length)
-                          skipSet.add(orariGiornata[idx + 1]);
-                        righe.push({ ora, tipo: "app40", app: stato.app });
-                      } else {
-                        righe.push({ ora, tipo: "app20", app: stato.app });
-                      }
-                    } else if (stato.tipo === "libero") {
-                      righe.push({ ora, tipo: "libero" });
-                    }
-                  });
-
-                  return righe.map((r) => (
-                    <View
-                      key={r.ora}
-                      style={[
-                        st.singleRow,
-                        r.app && st.singleRowOcc,
-                        r.tipo === "app40" && { minHeight: 110 },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          st.singleOraBox,
-                          r.tipo === "app40" && {
-                            alignSelf: "flex-start" as any,
-                            paddingTop: 16,
-                          },
-                        ]}
-                      >
-                        <Text style={[st.singleOra, !r.app && { color: "#333" }]}>
-                          {r.ora}
-                        </Text>
-                      </View>
-                      {r.app ? (
-                        <View
-                          style={[
-                            st.singleApp,
-                            r.tipo === "app40" && { minHeight: 95 },
-                            { borderLeftWidth: 3, borderLeftColor: color },
-                          ]}
-                        >
-                          <Pressable
-                            style={{ flex: 1, justifyContent: "center" }}
-                            onPress={() => setAppDetail(r.app)}
-                          >
-                            <Text style={st.singleCliente}>{r.app.cliente_nome}</Text>
-                            <Text style={st.singleServizio}>
-                              ✂️ {r.app.servizio_nome} • {r.app.durata_minuti || 40} min
-                            </Text>
-                          </Pressable>
-                          <View style={st.singleBtns}>
-                            <Pressable
-                              style={st.singleEditBtn}
-                              onPress={() => apriModifica(r.app)}
-                            >
-                              <Text style={st.singleEditText}>✏️</Text>
-                            </Pressable>
-                            <Pressable
-                              style={st.singleDelBtn}
-                              onPress={() => cancella(r.app.id)}
-                            >
-                              <Text style={st.singleDelText}>🗑️</Text>
-                            </Pressable>
+              return (
+                <View style={{ width: "100%" }}>
+                  <View style={{ flexDirection: "row", width: "100%", height: totalH }}>
+                    {/* Colonna ORA */}
+                    <View style={{ width: ORA_W, height: totalH }}>
+                      {orariGiornata.map((ora, idx) => {
+                        const haApp = appsBarb.some((p: any) => (p.ora || "").slice(0, 5) === ora);
+                        return (
+                          <View key={ora} style={{ position: "absolute", top: idx * SLOT_H, left: 0, right: 0, height: SLOT_H, borderTopWidth: 1, borderTopColor: "#1A1A1A", justifyContent: "flex-start", alignItems: "center", paddingTop: 6 }}>
+                            <Text style={{ color: haApp ? "#D4AF37" : "#282828", fontSize: FONT_ORA, fontWeight: "800" }}>{ora}</Text>
                           </View>
-                        </View>
-                      ) : (
-                        <View style={st.singleEmpty}>
-                          <Text style={st.singleEmptyText}>—</Text>
-                        </View>
-                      )}
+                        );
+                      })}
                     </View>
-                  ));
-                })()}
-              </View>
+
+                    {/* Colonna appuntamenti */}
+                    <View style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
+                      {orariGiornata.map((ora, idx) => (
+                        <View key={ora} style={{ position: "absolute", top: idx * SLOT_H, left: 0, right: 0, height: 1, backgroundColor: "#1A1A1A" }} />
+                      ))}
+                      {appsBarb.map((app: any) => {
+                        const startStr = (app.ora || "").slice(0, 5);
+                        const startIdx = orariGiornata.indexOf(startStr);
+                        if (startIdx === -1) return null;
+                        const numSlots = Math.max(1, Math.ceil((app.durata_minuti || 20) / 20));
+                        const cardTop = startIdx * SLOT_H + 3;
+                        const cardH = numSlots * SLOT_H - 6;
+                        return (
+                          <Pressable
+                            key={app.id}
+                            onPress={() => setAppDetail(app)}
+                            style={{ position: "absolute", top: cardTop, left: 3, right: 3, height: cardH, backgroundColor: "#1C1C1C", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: color, padding: 8, justifyContent: "center", overflow: "hidden" }}
+                          >
+                            <Text style={{ color: "#FFF", fontSize: FONT_NOME, fontWeight: "700" }} numberOfLines={1}>{app.cliente_nome}</Text>
+                            <Text style={{ color: "#888", fontSize: FONT_SERV }} numberOfLines={1}>{app.servizio_nome}</Text>
+                            <Text style={{ color: "#555", fontSize: FONT_DUR }}>{app.durata_minuti || 20} min</Text>
+                            <View style={{ position: "absolute", top: 6, right: 6, flexDirection: "row", gap: 8 }}>
+                              <Pressable onPress={() => apriModifica(app)}>
+                                <Text style={{ fontSize: isDesktop ? 15 : 13 }}>✏️</Text>
+                              </Pressable>
+                              <Pressable onPress={() => cancella(app.id)}>
+                                <Text style={{ fontSize: isDesktop ? 15 : 13 }}>🗑️</Text>
+                              </Pressable>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </View>
+              );
+            })()
             ) : (() => {
               /* Griglia con posizionamento assoluto: ogni slot = SLOT_H px.
                  Le card si estendono in altezza in base alla durata (20min=1 slot, 40min=2 slot…)
