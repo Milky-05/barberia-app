@@ -1044,7 +1044,7 @@ export default function AdminDashboard() {
               const FONT_DUR = isDesktop ? 11 : 10;
               const availW = screenW - 40;
               const nBarb = prenotazioniPerBarbiere.length;
-              const barbW = Math.min(isDesktop ? 320 : 200, Math.max(90, Math.floor((availW - ORA_W) / nBarb)));
+              const barbW = Math.max(90, Math.floor((availW - ORA_W) / nBarb));
               const totalH = orariGiornata.length * SLOT_H;
 
               return (
