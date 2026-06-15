@@ -706,146 +706,128 @@ export default function AdminDashboard() {
         {/* ══════════ HOME TAB ══════════ */}
         {activeTab === "home" && (
           <>
-            {/* Navigazione giorni */}
-            <View style={st.weekHeader}>
-              <Pressable style={st.weekArrow} onPress={() => shiftDay(-1)}>
-                <Text style={{ color: "#D4AF37", fontSize: 22 }}>‹</Text>
+            {/* Riquadro appuntamenti con navigazione giorni ai lati */}
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4 }}>
+              <Pressable onPress={() => shiftDay(-1)} style={{ paddingHorizontal: 10, paddingVertical: 24 }}>
+                <Text style={{ color: "#D4AF37", fontSize: 28 }}>‹</Text>
               </Pressable>
-              <View style={{ alignItems: "center" }}>
-                <Text style={{ color: "#FFF", fontSize: 16, fontWeight: "700" }}>
-                  {dataCorrente === todayStr ? "Oggi — " : ""}{fmtDataLunga(dataCorrente)}
-                </Text>
-                {dataCorrente !== todayStr && (
-                  <Pressable onPress={goToday}>
-                    <Text style={{ color: "#D4AF37", fontSize: 12, marginTop: 2 }}>← Torna ad oggi</Text>
-                  </Pressable>
+              <View style={[st.statCard, { flex: 1 }]}>
+                {orariGiornata.length === 0 ? (
+                  <>
+                    <Text style={{ fontSize: 32, marginBottom: 6 }}>🔒</Text>
+                    <Text style={[st.statLbl, { fontSize: 13 }]}>Giorno di chiusura</Text>
+                    <Text style={[st.statLbl, { color: "#444", fontSize: 11, marginTop: 2 }]}>{fmtDataLunga(dataCorrente)}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={st.statVal}>{attivi.length}</Text>
+                    <Text style={st.statLbl}>Appuntamenti — {fmtDataLunga(dataCorrente)}</Text>
+                  </>
                 )}
               </View>
-              <Pressable style={st.weekArrow} onPress={() => shiftDay(1)}>
-                <Text style={{ color: "#D4AF37", fontSize: 22 }}>›</Text>
+              <Pressable onPress={() => shiftDay(1)} style={{ paddingHorizontal: 10, paddingVertical: 24 }}>
+                <Text style={{ color: "#D4AF37", fontSize: 28 }}>›</Text>
+              </Pressable>
+            </View>
+            {dataCorrente !== todayStr && (
+              <Pressable onPress={goToday} style={{ alignSelf: "center", marginTop: -4, marginBottom: 8 }}>
+                <Text style={{ color: "#D4AF37", fontSize: 12 }}>← Torna ad oggi</Text>
+              </Pressable>
+            )}
+
+            {/* Barbieri assenti/programmati */}
+            {barbieriAssenti.map((b) => (
+              <View key={b.id} style={st.absCard}>
+                <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
+                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                  <Text style={st.absBtnText}>Riattiva</Text>
+                </Pressable>
+              </View>
+            ))}
+            {barbieriProgrammati.map((b) => {
+              const info = JSON.parse(b.motivo_assenza);
+              const dataInizio = info.tipo === "permesso"
+                ? new Date(info.inizio).toISOString().split("T")[0]
+                : info.inizio;
+              return (
+                <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)" }]}>
+                  <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {info.tipo === "permesso" ? "permesso" : "assenza"} prog. il {fmtDataShort(dataInizio)}</Text>
+                  <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                    <Text style={st.absBtnText}>Annulla</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+
+            {/* Pulsanti Assente / Permesso */}
+            <View style={[st.actRow, { marginTop: 16 }]}>
+              <Pressable style={st.actRed} onPress={() => {
+                setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
+                setAssenzaData(todayStr);
+                setAssenzaGiorni(1);
+                setShowAssenza(true);
+              }}>
+                <Text style={st.actRedText}>🔴 Assente</Text>
+              </Pressable>
+              <Pressable style={st.actOrange} onPress={() => {
+                setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
+                const now = new Date();
+                setPermessoOraInizio(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);
+                setPermessoData(todayStr);
+                setPermessoMinuti(60);
+                setShowPermesso(true);
+              }}>
+                <Text style={st.actOrangeText}>🕐 Permesso</Text>
               </Pressable>
             </View>
 
-            {orariGiornata.length === 0 ? (
-              /* Giorno di chiusura */
-              <View style={[st.emptyBox, { marginTop: 24 }]}>
-                <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-                <Text style={st.emptyText}>Giorno di chiusura</Text>
-              </View>
-            ) : (
-              <>
-                {/* Contatore totale — sempre tutti i barbieri */}
-                <View style={st.statRow}>
-                  <View style={st.statCard}>
-                    <Text style={st.statVal}>{attivi.length}</Text>
-                    <Text style={st.statLbl}>
-                      {attivi.length === 1 ? "Appuntamento" : "Appuntamenti"} — tutti i barbieri
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Barbieri assenti/programmati */}
-                {barbieriAssenti.map((b) => (
-                  <View key={b.id} style={st.absCard}>
-                    <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
-                    <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                      <Text style={st.absBtnText}>Riattiva</Text>
-                    </Pressable>
-                  </View>
-                ))}
-                {barbieriProgrammati.map((b) => {
-                  const info = JSON.parse(b.motivo_assenza);
-                  const dataInizio = info.tipo === "permesso"
-                    ? new Date(info.inizio).toISOString().split("T")[0]
-                    : info.inizio;
+            {/* Card per barbiere — solo su giorni aperti */}
+            {orariGiornata.length > 0 && (
+              <View style={{ marginTop: 16, paddingHorizontal: 16, paddingBottom: 16 }}>
+                {tuttiBarbieri.map((b) => {
+                  const appBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
+                  const slotsOccupati = appBarb.reduce(
+                    (sum: number, app: any) => sum + Math.ceil((app.durata_minuti || 20) / 20),
+                    0
+                  );
+                  const slotsTotal = orariGiornata.length;
+                  const pct = slotsTotal > 0 ? Math.min(100, (slotsOccupati / slotsTotal) * 100) : 0;
+                  const color = getBarbColor(b.id);
+                  const isAssente = b.assente;
+                  const isPermesso = isPermessoBarbiere(b);
                   return (
-                    <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)" }]}>
-                      <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {info.tipo === "permesso" ? "permesso" : "assenza"} prog. il {fmtDataShort(dataInizio)}</Text>
-                      <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                        <Text style={st.absBtnText}>Annulla</Text>
-                      </Pressable>
+                    <View
+                      key={b.id}
+                      style={{
+                        backgroundColor: "#141414",
+                        borderRadius: 10,
+                        padding: 14,
+                        marginBottom: 10,
+                        borderWidth: 1,
+                        borderColor: "#1E1E1E",
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
+                          <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 15 }}>{b.nome}</Text>
+                          {isAssente && (
+                            <Text style={{ color: isPermesso ? "#FFA500" : "#F44336", fontSize: 11, fontWeight: "600" }}>
+                              {isPermesso ? "in permesso" : "assente"}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={{ color: "#D4AF37", fontWeight: "800", fontSize: 15 }}>
+                          {slotsOccupati}/{slotsTotal}
+                        </Text>
+                      </View>
+                      <View style={{ height: 6, backgroundColor: "#252525", borderRadius: 3 }}>
+                        <View style={{ height: 6, backgroundColor: isAssente ? "#444" : color, borderRadius: 3, width: `${pct}%` as any }} />
+                      </View>
                     </View>
                   );
                 })}
-
-                {/* Pulsanti Assente / Permesso */}
-                <View style={[st.actRow, { marginTop: 16 }]}>
-                  <Pressable style={st.actRed} onPress={() => {
-                    setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
-                    setAssenzaData(todayStr);
-                    setAssenzaGiorni(1);
-                    setShowAssenza(true);
-                  }}>
-                    <Text style={st.actRedText}>🔴 Assente</Text>
-                  </Pressable>
-                  <Pressable style={st.actOrange} onPress={() => {
-                    setAssenzaBarbiere(barbieri.find((b) => !b.assente)?.id || 0);
-                    const now = new Date();
-                    setPermessoOraInizio(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`);
-                    setPermessoData(todayStr);
-                    setPermessoMinuti(60);
-                    setShowPermesso(true);
-                  }}>
-                    <Text style={st.actOrangeText}>🕐 Permesso</Text>
-                  </Pressable>
-                </View>
-
-                {/* Card per barbiere — slot occupati / totali */}
-                <View style={{ marginTop: 16, paddingHorizontal: 16, paddingBottom: 16 }}>
-                  {tuttiBarbieri.map((b) => {
-                    const appBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
-                    const slotsOccupati = appBarb.reduce(
-                      (sum: number, app: any) => sum + Math.ceil((app.durata_minuti || 20) / 20),
-                      0
-                    );
-                    const slotsTotal = orariGiornata.length;
-                    const pct = slotsTotal > 0 ? Math.min(100, (slotsOccupati / slotsTotal) * 100) : 0;
-                    const color = getBarbColor(b.id);
-                    const isAssente = b.assente;
-                    const isPermesso = isPermessoBarbiere(b);
-                    return (
-                      <View
-                        key={b.id}
-                        style={{
-                          backgroundColor: "#141414",
-                          borderRadius: 10,
-                          padding: 14,
-                          marginBottom: 10,
-                          borderWidth: 1,
-                          borderColor: "#1E1E1E",
-                        }}
-                      >
-                        {/* Nome + stato + contatore */}
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-                            <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 15 }}>{b.nome}</Text>
-                            {isAssente && (
-                              <Text style={{ color: isPermesso ? "#FFA500" : "#F44336", fontSize: 11, fontWeight: "600" }}>
-                                {isPermesso ? "in permesso" : "assente"}
-                              </Text>
-                            )}
-                          </View>
-                          <Text style={{ color: "#D4AF37", fontWeight: "800", fontSize: 15 }}>
-                            {slotsOccupati}/{slotsTotal}
-                          </Text>
-                        </View>
-                        {/* Barra di avanzamento */}
-                        <View style={{ height: 6, backgroundColor: "#252525", borderRadius: 3 }}>
-                          <View
-                            style={{
-                              height: 6,
-                              backgroundColor: isAssente ? "#444" : color,
-                              borderRadius: 3,
-                              width: `${pct}%` as any,
-                            }}
-                          />
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
+              </View>
             )}
           </>
         )}
