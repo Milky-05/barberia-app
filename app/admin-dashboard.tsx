@@ -1048,12 +1048,12 @@ export default function AdminDashboard() {
               const totalH = orariGiornata.length * SLOT_H;
 
               return (
-                <View>
+                <View style={{ width: availW }}>
                   {/* Header nomi barbieri */}
                   <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#2A2A2A", paddingVertical: 10 }}>
                     <View style={{ width: ORA_W }} />
                     {prenotazioniPerBarbiere.map((b) => (
-                      <View key={b.id} style={{ width: barbW, alignItems: "center" }}>
+                      <View key={b.id} style={{ flex: 1, alignItems: "center" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getBarbColor(b.id) }} />
                           <Text style={{ color: "#D4AF37", fontSize: isDesktop ? 14 : 12, fontWeight: "700" }} numberOfLines={1}>{b.nome}</Text>
@@ -1087,7 +1087,7 @@ export default function AdminDashboard() {
                       const color = getBarbColor(b.id);
                       const appsBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
                       return (
-                        <View key={b.id} style={{ width: barbW, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
+                        <View key={b.id} style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
                           {/* Linee guida slot */}
                           {orariGiornata.map((ora, idx) => (
                             <View key={ora} style={{ position: "absolute", top: idx * SLOT_H, left: 0, right: 0, height: 1, backgroundColor: "#1A1A1A" }} />
