@@ -1046,9 +1046,9 @@ export default function AdminDashboard() {
               const totalH = orariGiornata.length * SLOT_H;
 
               return (
-                <View style={{ marginHorizontal: -20 }}>
+                <View style={{ width: "100%" }}>
                   {/* Header nomi barbieri */}
-                  <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#2A2A2A", paddingVertical: 10 }}>
+                  <View style={{ flexDirection: "row", width: "100%", borderBottomWidth: 1, borderBottomColor: "#2A2A2A", paddingVertical: 10 }}>
                     <View style={{ width: ORA_W }} />
                     {prenotazioniPerBarbiere.map((b) => (
                       <View key={b.id} style={{ flex: 1, alignItems: "center" }}>
@@ -1061,7 +1061,7 @@ export default function AdminDashboard() {
                   </View>
 
                   {/* Corpo griglia a posizionamento assoluto */}
-                  <View style={{ flexDirection: "row", height: totalH }}>
+                  <View style={{ flexDirection: "row", width: "100%", height: totalH }}>
                     {/* Colonna ORA + linee guida orizzontali */}
                     <View style={{ width: ORA_W, height: totalH }}>
                       {orariGiornata.map((ora, idx) => {
