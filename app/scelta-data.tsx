@@ -191,8 +191,13 @@ export default function SceltaData() {
     }
     setInvioInCorso(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace("/"); return; }
+      // Forza refresh del token se prossimo alla scadenza o già scaduto
+      if (!session.expires_at || session.expires_at * 1000 < Date.now() + 60000) {
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.data.session) session = refreshed.data.session;
+      }
       const token = session.access_token;
       const response = await fetch(`${BACKEND_URL}/api/prenotazioni`, {
         method: "POST",
