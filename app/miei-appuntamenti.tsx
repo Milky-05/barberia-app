@@ -48,9 +48,16 @@ export default function MieiAppuntamenti() {
     carica(t || "");
   };
 
+  const getToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const t = session?.access_token || token;
+    if (t && t !== token) setToken(t);
+    return t;
+  };
+
   const carica = async (t?: string) => {
     setLoading(true);
-    const tkn = t || token;
+    const tkn = t || (await getToken());
     try {
       const res = await fetch(`${BACKEND_URL}/api/prenotazioni/miei`, {
         headers: { Authorization: `Bearer ${tkn}` },
@@ -66,9 +73,10 @@ export default function MieiAppuntamenti() {
       if (!window.confirm("Cancellare questo appuntamento?")) return;
     }
     try {
+      const tkn = await getToken();
       await fetch(`${BACKEND_URL}/api/prenotazioni/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${tkn}` },
       });
       carica();
     } catch (err) {}

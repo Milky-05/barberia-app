@@ -121,6 +121,20 @@ export default function AdminDashboard() {
     Authorization: `Bearer ${t || token}`,
     "Content-Type": "application/json",
   });
+
+  // Helper: fa fetch con token corrente; se 401 (token scaduto) lo rinnova e riprova
+  const fetchAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
+    let res = await fetch(url, { ...options, headers: { ...auth(), ...(options.headers as any) } });
+    if (res.status === 401) {
+      const { data: { session } } = await supabase.auth.refreshSession();
+      if (session?.access_token) {
+        setToken(session.access_token);
+        res = await fetch(url, { ...options, headers: { ...auth(session.access_token), ...(options.headers as any) } });
+      }
+    }
+    return res;
+  };
+
   const msg = (m: string) => {
     Platform.OS === "web" ? window.alert(m) : Alert.alert("Info", m);
   };
@@ -180,9 +194,8 @@ export default function AdminDashboard() {
       } else {
         setBarbieri([]);
       }
-      const resAll = await fetch(
+      const resAll = await fetchAuth(
         `${BACKEND_URL}/api/admin/barbieri?sede_id=${sedeCorrente}`,
-        { headers: auth() },
       );
       const allBarb = await resAll.json();
       if (Array.isArray(allBarb)) {
@@ -201,7 +214,7 @@ export default function AdminDashboard() {
     let url = `${BACKEND_URL}/api/admin/prenotazioni?sede_id=${sedeCorrente}&data=${dataCorrente}`;
     if (filtroBarbiere) url += `&barbiere_id=${filtroBarbiere}`;
     try {
-      const res = await fetch(url, { headers: auth() });
+      const res = await fetchAuth(url);
       if (!res.ok) return;
       setPrenotazioni(await res.json());
     } catch (err) {}
@@ -211,9 +224,8 @@ export default function AdminDashboard() {
       if (!window.confirm("Cancellare questo appuntamento?")) return;
     }
     try {
-      await fetch(`${BACKEND_URL}/api/admin/prenotazioni/${id}`, {
+      await fetchAuth(`${BACKEND_URL}/api/admin/prenotazioni/${id}`, {
         method: "DELETE",
-        headers: auth(),
       });
       caricaPrenotazioni();
     } catch (err) {
@@ -255,9 +267,8 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/prenotazioni`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/admin/prenotazioni`, {
         method: "POST",
-        headers: auth(),
         body: JSON.stringify({
           sede_id: sedeCorrente,
           barbiere_id: newBarbiere,
@@ -286,13 +297,9 @@ export default function AdminDashboard() {
       if (modNome && modNome !== modificaApp.cliente_nome)
         body.cliente_nome = modNome;
       if (modOra && modOra !== modificaApp.ora?.slice(0, 5)) body.ora = modOra;
-      const res = await fetch(
+      const res = await fetchAuth(
         `${BACKEND_URL}/api/admin/prenotazioni/${modificaApp.id}`,
-        {
-          method: "PATCH",
-          headers: auth(),
-          body: JSON.stringify(body),
-        },
+        { method: "PATCH", body: JSON.stringify(body) },
       );
       const data = await res.json();
       if (data.success) {
@@ -341,9 +348,8 @@ export default function AdminDashboard() {
       if (!window.confirm(`Cancellare gli appuntamenti di ${bN} per ${giorniTxt}?`)) return;
     }
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-assente`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/admin/barbiere-assente`, {
         method: "POST",
-        headers: auth(),
         body: JSON.stringify({
           barbiere_id: assenzaBarbiere,
           motivo: assenzaMotivo || "Assente",
@@ -364,9 +370,8 @@ export default function AdminDashboard() {
   const segnaPermesso = async () => {
     if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-permesso`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/admin/barbiere-permesso`, {
         method: "POST",
-        headers: auth(),
         body: JSON.stringify({
           barbiere_id: assenzaBarbiere,
           data_inizio: permessoData,
@@ -385,9 +390,8 @@ export default function AdminDashboard() {
 
   const riattiva = async (id: number) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/barbiere-presente`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/admin/barbiere-presente`, {
         method: "POST",
-        headers: auth(),
         body: JSON.stringify({ barbiere_id: id }),
       });
       const data = await res.json();
@@ -434,9 +438,8 @@ export default function AdminDashboard() {
   };
   const salvaProfilo = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/profilo`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/auth/profilo`, {
         method: "PATCH",
-        headers: auth(),
         body: JSON.stringify({ nome: editNome }),
       });
       if ((await res.json()).success) {
@@ -456,9 +459,8 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/cambia-password`, {
+      const res = await fetchAuth(`${BACKEND_URL}/api/auth/cambia-password`, {
         method: "PATCH",
-        headers: auth(),
         body: JSON.stringify({
           vecchia_password: vecchiaPw,
           nuova_password: nuovaPw,
