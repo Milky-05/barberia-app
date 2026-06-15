@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
   Platform,
   Pressable,
   SafeAreaView,
@@ -1029,73 +1030,106 @@ export default function AdminDashboard() {
                   ));
                 })()}
               </View>
-            ) : (
-              <View>
-                {prenotazioniPerBarbiere.map((barb) => {
-                  const barbId = barb.id;
-                  const color = getBarbColor(barbId);
-                  const righe: { ora: string; tipo: "libero" | "app20" | "app40"; app?: any }[] = [];
-                  const skipSet = new Set<string>();
-                  orariGiornata.forEach((ora) => {
-                    if (skipSet.has(ora)) return;
-                    const stato = getSlotStato(barbId, ora);
-                    if (stato.tipo === "inizio") {
-                      const dur = stato.app.durata_minuti || 40;
-                      if (dur >= 40) {
-                        const idx = orariGiornata.indexOf(ora);
-                        if (idx + 1 < orariGiornata.length) skipSet.add(orariGiornata[idx + 1]);
-                        righe.push({ ora, tipo: "app40", app: stato.app });
-                      } else {
-                        righe.push({ ora, tipo: "app20", app: stato.app });
-                      }
-                    } else if (stato.tipo === "libero") {
-                      righe.push({ ora, tipo: "libero" });
-                    }
-                  });
-                  return (
-                    <View key={barbId} style={{ marginBottom: 24 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: "#1E1E1E" }}>
-                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-                        <Text style={{ color: "#D4AF37", fontWeight: "700", fontSize: 14 }}>{barb.nome}</Text>
-                        <Text style={{ color: "#555", fontSize: 12 }}>
-                          {barb.appuntamenti.length === 0 ? "Nessun appuntamento" : `${barb.appuntamenti.length} appuntament${barb.appuntamenti.length === 1 ? "o" : "i"}`}
-                        </Text>
-                      </View>
-                      {righe.map((r) => (
-                        <View
-                          key={r.ora}
-                          style={[st.singleRow, r.app && st.singleRowOcc, r.tipo === "app40" && { minHeight: 110 }]}
-                        >
-                          <View style={[st.singleOraBox, r.tipo === "app40" && { alignSelf: "flex-start" as any, paddingTop: 16 }]}>
-                            <Text style={[st.singleOra, !r.app && { color: "#333" }]}>{r.ora}</Text>
-                          </View>
-                          {r.app ? (
-                            <View style={[st.singleApp, r.tipo === "app40" && { minHeight: 95 }, { borderLeftWidth: 3, borderLeftColor: color }]}>
-                              <Pressable style={{ flex: 1, justifyContent: "center" }} onPress={() => setAppDetail(r.app)}>
-                                <Text style={st.singleCliente}>{r.app.cliente_nome}</Text>
-                                <Text style={st.singleServizio}>✂️ {r.app.servizio_nome} • {r.app.durata_minuti || 40} min</Text>
-                              </Pressable>
-                              <View style={st.singleBtns}>
-                                <Pressable style={st.singleEditBtn} onPress={() => apriModifica(r.app)}>
-                                  <Text style={st.singleEditText}>✏️</Text>
-                                </Pressable>
-                                <Pressable style={st.singleDelBtn} onPress={() => cancella(r.app.id)}>
-                                  <Text style={st.singleDelText}>🗑️</Text>
-                                </Pressable>
-                              </View>
-                            </View>
-                          ) : (
-                            <View style={st.singleEmpty}>
-                              <Text style={st.singleEmptyText}>—</Text>
-                            </View>
-                          )}
+            ) : (() => {
+              /* Tabella a colonne: una colonna per barbiere, una riga per fascia oraria.
+                 marginHorizontal:-20 per uscire dal padding del container e usare tutta la larghezza schermo. */
+              const nBarb = prenotazioniPerBarbiere.length;
+              const ORA_W = 46;
+              const screenW = Dimensions.get("window").width;
+              const barbW = Math.max(80, Math.floor((screenW - ORA_W) / nBarb));
+              return (
+                <View style={{ marginHorizontal: -20 }}>
+                  {/* Header nomi barbieri */}
+                  <View style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#2A2A2A", paddingVertical: 8, paddingLeft: ORA_W }}>
+                    {prenotazioniPerBarbiere.map((b) => (
+                      <View key={b.id} style={{ width: barbW, alignItems: "center" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: getBarbColor(b.id) }} />
+                          <Text style={{ color: "#D4AF37", fontSize: 11, fontWeight: "700" }} numberOfLines={1}>{b.nome}</Text>
                         </View>
-                      ))}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+                      </View>
+                    ))}
+                  </View>
+                  {/* Righe orari */}
+                  {(() => {
+                    const skipSet = new Set<string>();
+                    return orariGiornata.map((ora) => {
+                      if (skipSet.has(ora)) return null;
+                      const has40 = prenotazioniPerBarbiere.some((b) => {
+                        const s = getSlotStato(b.id, ora);
+                        return s.tipo === "inizio" && (s.app.durata_minuti || 40) >= 40;
+                      });
+                      let nextOra = "";
+                      if (has40) {
+                        const idx = orariGiornata.indexOf(ora);
+                        if (idx + 1 < orariGiornata.length) {
+                          nextOra = orariGiornata[idx + 1];
+                          skipSet.add(nextOra);
+                        }
+                      }
+                      const haApp = prenotazioniPerBarbiere.some((b) => getSlotStato(b.id, ora).tipo === "inizio");
+                      return (
+                        <View key={ora} style={{ flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#181818", minHeight: has40 ? 120 : 64 }}>
+                          {/* Colonna ora */}
+                          <View style={{ width: ORA_W, justifyContent: has40 ? "flex-start" : "center", alignItems: "center", paddingTop: has40 ? 8 : 0 }}>
+                            <Text style={{ color: haApp ? "#D4AF37" : "#2A2A2A", fontSize: 12, fontWeight: "800" }}>{ora}</Text>
+                            {has40 && nextOra ? (
+                              <Text style={{ color: "#252525", fontSize: 11, marginTop: 32 }}>{nextOra}</Text>
+                            ) : null}
+                          </View>
+                          {/* Celle barbieri */}
+                          {prenotazioniPerBarbiere.map((b) => {
+                            const stato = getSlotStato(b.id, ora);
+                            const statoNext = has40 && nextOra ? getSlotStato(b.id, nextOra) : null;
+                            const color = getBarbColor(b.id);
+                            const isOccupato = stato.tipo === "inizio";
+                            return (
+                              <View key={b.id} style={{ width: barbW, paddingHorizontal: 3, paddingVertical: 3, justifyContent: has40 ? "flex-start" : "center" }}>
+                                {isOccupato ? (
+                                  <Pressable
+                                    onPress={() => setAppDetail(stato.app)}
+                                    style={{ backgroundColor: "#1C1C1C", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: color, padding: 6, minHeight: has40 ? 106 : 52, justifyContent: "center" }}
+                                  >
+                                    <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "700" }} numberOfLines={1}>{stato.app.cliente_nome}</Text>
+                                    <Text style={{ color: "#777", fontSize: 10 }} numberOfLines={1}>{stato.app.servizio_nome}</Text>
+                                    <Text style={{ color: "#444", fontSize: 10 }}>{stato.app.durata_minuti || 40} min</Text>
+                                    <Pressable onPress={() => cancella(stato.app.id)} style={{ position: "absolute", top: 4, right: 4 }}>
+                                      <Text style={{ color: "#444", fontSize: 11 }}>✕</Text>
+                                    </Pressable>
+                                  </Pressable>
+                                ) : stato.tipo === "continua" ? (
+                                  <View style={{ flex: 1 }} />
+                                ) : has40 ? (
+                                  <View style={{ flex: 1, gap: 3 }}>
+                                    <View style={{ flex: 1 }} />
+                                    {statoNext && statoNext.tipo === "inizio" ? (
+                                      <Pressable
+                                        onPress={() => setAppDetail(statoNext.app)}
+                                        style={{ backgroundColor: "#1C1C1C", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: color, padding: 6, flex: 1, justifyContent: "center" }}
+                                      >
+                                        <Text style={{ color: "#FFF", fontSize: 11, fontWeight: "700" }} numberOfLines={1}>{statoNext.app.cliente_nome}</Text>
+                                        <Text style={{ color: "#777", fontSize: 10 }} numberOfLines={1}>{statoNext.app.servizio_nome}</Text>
+                                        <Pressable onPress={() => cancella(statoNext.app.id)} style={{ position: "absolute", top: 4, right: 4 }}>
+                                          <Text style={{ color: "#444", fontSize: 11 }}>✕</Text>
+                                        </Pressable>
+                                      </Pressable>
+                                    ) : (
+                                      <View style={{ flex: 1 }} />
+                                    )}
+                                  </View>
+                                ) : (
+                                  <View style={{ flex: 1 }} />
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      );
+                    });
+                  })()}
+                </View>
+              );
+            })()}
             <View style={{ height: 90 }} />
           </>
         )}
