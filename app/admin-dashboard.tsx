@@ -157,7 +157,7 @@ export default function AdminDashboard() {
       const meRes = await fetch(`${BACKEND_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
-      if (!meRes.ok) { router.replace("/"); return; }
+      if (!meRes.ok) { setLoading(false); router.replace("/"); return; }
       const meData = await meRes.json();
       const u = { ...meData.utente, email: session.user.email };
       setToken(session.access_token);
@@ -172,6 +172,7 @@ export default function AdminDashboard() {
       setServizi(await resServ.json());
       setLoading(false);
     } catch (err) {
+      setLoading(false);
       router.replace("/");
     }
   };
