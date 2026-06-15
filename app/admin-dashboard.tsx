@@ -707,25 +707,25 @@ export default function AdminDashboard() {
         {activeTab === "home" && (
           <>
             {/* Riquadro appuntamenti con navigazione giorni ai lati */}
-            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4 }}>
-              <Pressable onPress={() => shiftDay(-1)} style={{ paddingHorizontal: 10, paddingVertical: 24 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", width: "100%", paddingHorizontal: 4 }}>
+              <Pressable onPress={() => shiftDay(-1)} style={{ paddingHorizontal: 12, paddingVertical: 24 }}>
                 <Text style={{ color: "#D4AF37", fontSize: 28 }}>‹</Text>
               </Pressable>
-              <View style={[st.statCard, { flex: 1 }]}>
+              <View style={[st.statCard, { flex: 1, alignItems: "center" }]}>
                 {orariGiornata.length === 0 ? (
                   <>
                     <Text style={{ fontSize: 32, marginBottom: 6 }}>🔒</Text>
-                    <Text style={[st.statLbl, { fontSize: 13 }]}>Giorno di chiusura</Text>
-                    <Text style={[st.statLbl, { color: "#444", fontSize: 11, marginTop: 2 }]}>{fmtDataLunga(dataCorrente)}</Text>
+                    <Text style={[st.statLbl, { fontSize: 13, textAlign: "center" }]}>Giorno di chiusura</Text>
+                    <Text style={[st.statLbl, { color: "#444", fontSize: 11, marginTop: 2, textAlign: "center" }]}>{fmtDataLunga(dataCorrente)}</Text>
                   </>
                 ) : (
                   <>
-                    <Text style={st.statVal}>{attivi.length}</Text>
-                    <Text style={st.statLbl}>Appuntamenti — {fmtDataLunga(dataCorrente)}</Text>
+                    <Text style={[st.statVal, { textAlign: "center" }]}>{attivi.length}</Text>
+                    <Text style={[st.statLbl, { textAlign: "center" }]}>Appuntamenti — {fmtDataLunga(dataCorrente)}</Text>
                   </>
                 )}
               </View>
-              <Pressable onPress={() => shiftDay(1)} style={{ paddingHorizontal: 10, paddingVertical: 24 }}>
+              <Pressable onPress={() => shiftDay(1)} style={{ paddingHorizontal: 12, paddingVertical: 24 }}>
                 <Text style={{ color: "#D4AF37", fontSize: 28 }}>›</Text>
               </Pressable>
             </View>
@@ -781,52 +781,59 @@ export default function AdminDashboard() {
               </Pressable>
             </View>
 
-            {/* Card per barbiere — solo su giorni aperti */}
+            {/* Card per barbiere — solo su giorni aperti, solo i barbieri di turno quel giorno */}
             {orariGiornata.length > 0 && (
               <View style={{ marginTop: 16, paddingHorizontal: 16, paddingBottom: 16 }}>
-                {tuttiBarbieri.map((b) => {
-                  const appBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
-                  const slotsOccupati = appBarb.reduce(
-                    (sum: number, app: any) => sum + Math.ceil((app.durata_minuti || 20) / 20),
-                    0
+                {(() => {
+                  const [y, m, d] = dataCorrente.split("-").map(Number);
+                  const dow = new Date(y, m - 1, d).getDay();
+                  const barbieriDelGiorno = tuttiBarbieri.filter(
+                    (b) => Array.isArray(b.giorni_lavoro) && b.giorni_lavoro.includes(dow)
                   );
-                  const slotsTotal = orariGiornata.length;
-                  const pct = slotsTotal > 0 ? Math.min(100, (slotsOccupati / slotsTotal) * 100) : 0;
-                  const color = getBarbColor(b.id);
-                  const isAssente = b.assente;
-                  const isPermesso = isPermessoBarbiere(b);
-                  return (
-                    <View
-                      key={b.id}
-                      style={{
-                        backgroundColor: "#141414",
-                        borderRadius: 10,
-                        padding: 14,
-                        marginBottom: 10,
-                        borderWidth: 1,
-                        borderColor: "#1E1E1E",
-                      }}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-                          <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 15 }}>{b.nome}</Text>
-                          {isAssente && (
-                            <Text style={{ color: isPermesso ? "#FFA500" : "#F44336", fontSize: 11, fontWeight: "600" }}>
-                              {isPermesso ? "in permesso" : "assente"}
-                            </Text>
-                          )}
+                  return barbieriDelGiorno.map((b) => {
+                    const appBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
+                    const slotsOccupati = appBarb.reduce(
+                      (sum: number, app: any) => sum + Math.ceil((app.durata_minuti || 20) / 20),
+                      0
+                    );
+                    const slotsTotal = orariGiornata.length;
+                    const pct = slotsTotal > 0 ? Math.min(100, (slotsOccupati / slotsTotal) * 100) : 0;
+                    const color = getBarbColor(b.id);
+                    const isAssente = b.assente;
+                    const isPermesso = isPermessoBarbiere(b);
+                    return (
+                      <View
+                        key={b.id}
+                        style={{
+                          backgroundColor: "#141414",
+                          borderRadius: 10,
+                          padding: 14,
+                          marginBottom: 10,
+                          borderWidth: 1,
+                          borderColor: "#1E1E1E",
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
+                            <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 15 }}>{b.nome}</Text>
+                            {isAssente && (
+                              <Text style={{ color: isPermesso ? "#FFA500" : "#F44336", fontSize: 11, fontWeight: "600" }}>
+                                {isPermesso ? "in permesso" : "assente"}
+                              </Text>
+                            )}
+                          </View>
+                          <Text style={{ color: "#D4AF37", fontWeight: "800", fontSize: 15 }}>
+                            {slotsOccupati}/{slotsTotal}
+                          </Text>
                         </View>
-                        <Text style={{ color: "#D4AF37", fontWeight: "800", fontSize: 15 }}>
-                          {slotsOccupati}/{slotsTotal}
-                        </Text>
+                        <View style={{ height: 6, backgroundColor: "#252525", borderRadius: 3 }}>
+                          <View style={{ height: 6, backgroundColor: isAssente ? "#444" : color, borderRadius: 3, width: `${pct}%` as any }} />
+                        </View>
                       </View>
-                      <View style={{ height: 6, backgroundColor: "#252525", borderRadius: 3 }}>
-                        <View style={{ height: 6, backgroundColor: isAssente ? "#444" : color, borderRadius: 3, width: `${pct}%` as any }} />
-                      </View>
-                    </View>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </View>
             )}
           </>
