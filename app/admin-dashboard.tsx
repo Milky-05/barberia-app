@@ -92,6 +92,8 @@ export default function AdminDashboard() {
   const [orariNuovo, setOrariNuovo] = useState<string[]>([]);
   const [showServiziDrop, setShowServiziDrop] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [modalStep, setModalStep] = useState<"form" | "riepilogo">("form");
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
   const [showPermesso, setShowPermesso] = useState(false);
@@ -261,6 +263,7 @@ export default function AdminDashboard() {
     setNewTelefono("");
     setNewOra("");
     setShowServiziDrop(false);
+    setModalStep("form");
     setShowAggiungi(true);
     if (p && ps) caricaOrariNuovo(p.id, ps.id);
   };
@@ -289,9 +292,12 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         setShowAggiungi(false);
+        setModalStep("form");
         setNewCliente("");
         setNewTelefono("");
         caricaPrenotazioni();
+        setShowSuccessBanner(true);
+        setTimeout(() => setShowSuccessBanner(false), 3000);
       } else msg(data.error);
     } catch (err) {
       msg("Errore");
@@ -1235,16 +1241,69 @@ export default function AdminDashboard() {
                 </View>
               )}
 
-              <View style={st.mBtns}>
-                <Pressable style={st.mCancel} onPress={() => setShowAggiungi(false)}>
-                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
-                </Pressable>
-                <Pressable style={st.mConfirm} onPress={salvaAggiungi}>
-                  <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Salva</Text>
-                </Pressable>
-              </View>
+              {/* Pulsanti form */}
+              {modalStep === "form" && (
+                <View style={st.mBtns}>
+                  <Pressable style={st.mCancel} onPress={() => setShowAggiungi(false)}>
+                    <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[st.mConfirm, (!newCliente || !newOra) && { opacity: 0.4 }]}
+                    onPress={() => {
+                      if (!newCliente) { msg("Inserisci il nome del cliente"); return; }
+                      if (!newOra) { msg("Seleziona un orario"); return; }
+                      setModalStep("riepilogo");
+                    }}
+                  >
+                    <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Avanti →</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {/* ── RIEPILOGO ── */}
+              {modalStep === "riepilogo" && (() => {
+                const barbNome = barbieri.find((b) => b.id === newBarbiere)?.nome || "";
+                const servObj = servizi.find((sv) => sv.id === newServizio);
+                const righe = [
+                  { label: "Cliente", value: newCliente },
+                  ...(newTelefono ? [{ label: "Telefono", value: newTelefono }] : []),
+                  { label: "Data", value: fmtDataLunga(dataCorrente) },
+                  { label: "Orario", value: newOra },
+                  { label: "Barbiere", value: barbNome },
+                  { label: "Servizio", value: servObj ? `${servObj.nome} • ${servObj.durata_minuti} min` : "" },
+                ];
+                return (
+                  <View style={{ marginTop: 4 }}>
+                    <Text style={[st.mTitle, { marginBottom: 16 }]}>Riepilogo</Text>
+                    <View style={{ backgroundColor: "#0A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "#1A1A1A", overflow: "hidden", marginBottom: 24 }}>
+                      {righe.map((r, i) => (
+                        <View key={r.label} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 13, paddingHorizontal: 16, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: "#141414" }}>
+                          <Text style={{ color: "#555", fontSize: 12, width: 70, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</Text>
+                          <Text style={{ color: "#DDD", fontSize: 14, fontWeight: "600", flex: 1 }}>{r.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={st.mBtns}>
+                      <Pressable style={st.mCancel} onPress={() => setModalStep("form")}>
+                        <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>← Indietro</Text>
+                      </Pressable>
+                      <Pressable style={st.mConfirm} onPress={salvaAggiungi}>
+                        <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Salva</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })()}
             </ScrollView>
           </View>
+        </View>
+      )}
+
+      {/* BANNER SUCCESSO */}
+      {showSuccessBanner && (
+        <View style={{ position: "absolute", bottom: 90, left: 20, right: 20, backgroundColor: "#1A2A1A", borderRadius: 14, borderWidth: 1, borderColor: "rgba(80,200,80,0.3)", paddingVertical: 14, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12, zIndex: 200 }}>
+          <Text style={{ fontSize: 20 }}>✅</Text>
+          <Text style={{ color: "#7FD67F", fontSize: 14, fontWeight: "700", flex: 1 }}>Appuntamento salvato con successo</Text>
         </View>
       )}
 
