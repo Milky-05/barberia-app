@@ -1175,17 +1175,23 @@ export default function AdminDashboard() {
                 <Text style={{ color: "#D4AF37", fontSize: 11 }}>{showServiziDrop ? "▲" : "▼"}</Text>
               </Pressable>
               {showServiziDrop && (
-                <View style={{ backgroundColor: "#0A0A0A", borderWidth: 1, borderTopWidth: 0, borderColor: "#D4AF37", borderBottomLeftRadius: 10, borderBottomRightRadius: 10, marginBottom: 16, overflow: "hidden" }}>
+                <ScrollView
+                  style={{ maxHeight: 210, backgroundColor: "#0A0A0A", borderWidth: 1, borderTopWidth: 0, borderColor: "#D4AF37", borderBottomLeftRadius: 10, borderBottomRightRadius: 10, marginBottom: 16 }}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
+                  bounces={false}
+                >
                   {servizi.map((sv, idx) => (
                     <Pressable
                       key={sv.id}
                       onPress={() => { setNewServizio(sv.id); caricaOrariNuovo(newBarbiere, sv.id); setShowServiziDrop(false); }}
-                      style={{ paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: "#1A1A1A", backgroundColor: newServizio === sv.id ? "rgba(212,175,55,0.08)" : "transparent" }}
+                      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: "#1A1A1A", backgroundColor: newServizio === sv.id ? "rgba(212,175,55,0.08)" : "transparent" }}
                     >
                       <Text style={{ color: newServizio === sv.id ? "#D4AF37" : "#888", fontSize: 14, fontWeight: newServizio === sv.id ? "700" : "400" }}>{sv.nome}</Text>
+                      <Text style={{ color: newServizio === sv.id ? "rgba(212,175,55,0.6)" : "#444", fontSize: 12 }}>{sv.durata_minuti} min</Text>
                     </Pressable>
                   ))}
-                </View>
+                </ScrollView>
               )}
               {!showServiziDrop && <View style={{ marginBottom: 16 }} />}
 
