@@ -90,6 +90,7 @@ export default function AdminDashboard() {
   const [newServizio, setNewServizio] = useState(0);
   const [newOra, setNewOra] = useState("");
   const [orariNuovo, setOrariNuovo] = useState<string[]>([]);
+  const [showServiziDrop, setShowServiziDrop] = useState(false);
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
   const [showPermesso, setShowPermesso] = useState(false);
@@ -258,6 +259,7 @@ export default function AdminDashboard() {
     setNewCliente("");
     setNewTelefono("");
     setNewOra("");
+    setShowServiziDrop(false);
     setShowAggiungi(true);
     if (p && ps) caricaOrariNuovo(p.id, ps.id);
   };
@@ -1161,33 +1163,31 @@ export default function AdminDashboard() {
                 ))}
               </View>
 
-              {/* Servizio — dropdown nativo su web */}
+              {/* Servizio — dropdown custom */}
               <Text style={st.mLabel}>SERVIZIO</Text>
-              {Platform.OS === "web" ? (
-                // @ts-ignore
-                <select
-                  value={newServizio}
-                  onChange={(e: any) => {
-                    const id = parseInt(e.target.value);
-                    setNewServizio(id);
-                    caricaOrariNuovo(newBarbiere, id);
-                  }}
-                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: "#CCC", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", cursor: "pointer", outline: "none" }}
-                >
-                  {servizi.map((sv) => (
-                    // @ts-ignore
-                    <option key={sv.id} value={sv.id}>{sv.nome}</option>
-                  ))}
-                </select>
-              ) : (
-                <View style={[st.mGrid, { marginBottom: 16 }]}>
-                  {servizi.map((sv) => (
-                    <Pressable key={sv.id} style={[st.mChip, newServizio === sv.id && st.mChipA]} onPress={() => { setNewServizio(sv.id); caricaOrariNuovo(newBarbiere, sv.id); }}>
-                      <Text style={[st.mChipText, newServizio === sv.id && st.mChipTextA]}>{sv.nome}</Text>
+              <Pressable
+                onPress={() => setShowServiziDrop(!showServiziDrop)}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: showServiziDrop ? "#D4AF37" : "#2A2A2A", borderRadius: showServiziDrop ? 10 : 10, borderBottomLeftRadius: showServiziDrop ? 0 : 10, borderBottomRightRadius: showServiziDrop ? 0 : 10, paddingVertical: 13, paddingHorizontal: 14 }}
+              >
+                <Text style={{ color: "#CCC", fontSize: 14 }}>
+                  {servizi.find((sv) => sv.id === newServizio)?.nome || "Seleziona servizio"}
+                </Text>
+                <Text style={{ color: "#D4AF37", fontSize: 11 }}>{showServiziDrop ? "▲" : "▼"}</Text>
+              </Pressable>
+              {showServiziDrop && (
+                <View style={{ backgroundColor: "#0A0A0A", borderWidth: 1, borderTopWidth: 0, borderColor: "#D4AF37", borderBottomLeftRadius: 10, borderBottomRightRadius: 10, marginBottom: 16, overflow: "hidden" }}>
+                  {servizi.map((sv, idx) => (
+                    <Pressable
+                      key={sv.id}
+                      onPress={() => { setNewServizio(sv.id); caricaOrariNuovo(newBarbiere, sv.id); setShowServiziDrop(false); }}
+                      style={{ paddingVertical: 12, paddingHorizontal: 14, borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: "#1A1A1A", backgroundColor: newServizio === sv.id ? "rgba(212,175,55,0.08)" : "transparent" }}
+                    >
+                      <Text style={{ color: newServizio === sv.id ? "#D4AF37" : "#888", fontSize: 14, fontWeight: newServizio === sv.id ? "700" : "400" }}>{sv.nome}</Text>
                     </Pressable>
                   ))}
                 </View>
               )}
+              {!showServiziDrop && <View style={{ marginBottom: 16 }} />}
 
               {/* Orario */}
               <Text style={st.mLabel}>ORARIO DISPONIBILE</Text>
