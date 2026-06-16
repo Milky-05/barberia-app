@@ -91,6 +91,7 @@ export default function AdminDashboard() {
   const [newOra, setNewOra] = useState("");
   const [orariNuovo, setOrariNuovo] = useState<string[]>([]);
   const [showServiziDrop, setShowServiziDrop] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [loadingOrari, setLoadingOrari] = useState(false);
   const [showAssenza, setShowAssenza] = useState(false);
   const [showPermesso, setShowPermesso] = useState(false);
@@ -1143,11 +1144,30 @@ export default function AdminDashboard() {
 
               {/* Nome */}
               <Text style={st.mLabel}>NOME CLIENTE</Text>
-              <TextInput style={[st.mInput, { marginBottom: 12 }]} value={newCliente} onChangeText={setNewCliente} placeholder="Nome e cognome" placeholderTextColor="#333" />
+              <TextInput
+                style={[st.mInput, { marginBottom: 12 }, focusedInput === "nome" && st.mInputFocus]}
+                value={newCliente}
+                onChangeText={setNewCliente}
+                placeholder="Nome e cognome"
+                placeholderTextColor="#333"
+                selectionColor="#D4AF37"
+                onFocus={() => setFocusedInput("nome")}
+                onBlur={() => setFocusedInput(null)}
+              />
 
               {/* Telefono */}
               <Text style={st.mLabel}>TELEFONO <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale)</Text></Text>
-              <TextInput style={[st.mInput, { marginBottom: 16 }]} value={newTelefono} onChangeText={setNewTelefono} placeholder="Es: 333 1234567" placeholderTextColor="#333" keyboardType="phone-pad" />
+              <TextInput
+                style={[st.mInput, { marginBottom: 16 }, focusedInput === "telefono" && st.mInputFocus]}
+                value={newTelefono}
+                onChangeText={setNewTelefono}
+                placeholder="Es: 333 1234567"
+                placeholderTextColor="#333"
+                keyboardType="phone-pad"
+                selectionColor="#D4AF37"
+                onFocus={() => setFocusedInput("telefono")}
+                onBlur={() => setFocusedInput(null)}
+              />
 
               {/* Barbiere */}
               <Text style={st.mLabel}>BARBIERE</Text>
