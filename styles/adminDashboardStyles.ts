@@ -547,7 +547,7 @@ export const st = StyleSheet.create({
     padding: 14,
     color: "#FFF",
     fontSize: 15,
-    outlineColor: "#D4AF37",
+    outlineStyle: "none",
   } as any,
   mInputFocus: {
     borderColor: "#D4AF37",
