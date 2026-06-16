@@ -1132,8 +1132,8 @@ export default function AdminDashboard() {
         </Pressable>
       </View>
 
-      {/* MODAL AGGIUNGI */}
-      {showAggiungi && (
+      {/* MODAL AGGIUNGI — STEP 1: FORM */}
+      {showAggiungi && modalStep === "form" && (
         <View style={st.modalOv}>
           <View style={st.modal}>
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -1193,7 +1193,7 @@ export default function AdminDashboard() {
               <Text style={st.mLabel}>SERVIZIO</Text>
               <Pressable
                 onPress={() => setShowServiziDrop(!showServiziDrop)}
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: showServiziDrop ? "#D4AF37" : "#2A2A2A", borderRadius: showServiziDrop ? 10 : 10, borderBottomLeftRadius: showServiziDrop ? 0 : 10, borderBottomRightRadius: showServiziDrop ? 0 : 10, paddingVertical: 13, paddingHorizontal: 14 }}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: showServiziDrop ? "#D4AF37" : "#2A2A2A", borderRadius: 10, borderBottomLeftRadius: showServiziDrop ? 0 : 10, borderBottomRightRadius: showServiziDrop ? 0 : 10, paddingVertical: 13, paddingHorizontal: 14 }}
               >
                 <Text style={{ color: "#CCC", fontSize: 14 }}>
                   {servizi.find((sv) => sv.id === newServizio)?.nome || "Seleziona servizio"}
@@ -1241,63 +1241,70 @@ export default function AdminDashboard() {
                 </View>
               )}
 
-              {/* Pulsanti form */}
-              {modalStep === "form" && (
-                <View style={st.mBtns}>
-                  <Pressable style={st.mCancel} onPress={() => setShowAggiungi(false)}>
-                    <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[st.mConfirm, (!newCliente || !newOra) && { opacity: 0.4 }]}
-                    onPress={() => {
-                      if (!newCliente) { msg("Inserisci il nome del cliente"); return; }
-                      if (!newOra) { msg("Seleziona un orario"); return; }
-                      setModalStep("riepilogo");
-                    }}
-                  >
-                    <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Avanti →</Text>
-                  </Pressable>
-                </View>
-              )}
-
-              {/* ── RIEPILOGO ── */}
-              {modalStep === "riepilogo" && (() => {
-                const barbNome = barbieri.find((b) => b.id === newBarbiere)?.nome || "";
-                const servObj = servizi.find((sv) => sv.id === newServizio);
-                const righe = [
-                  { label: "Cliente", value: newCliente },
-                  ...(newTelefono ? [{ label: "Telefono", value: newTelefono }] : []),
-                  { label: "Data", value: fmtDataLunga(dataCorrente) },
-                  { label: "Orario", value: newOra },
-                  { label: "Barbiere", value: barbNome },
-                  { label: "Servizio", value: servObj ? `${servObj.nome} • ${servObj.durata_minuti} min` : "" },
-                ];
-                return (
-                  <View style={{ marginTop: 4 }}>
-                    <Text style={[st.mTitle, { marginBottom: 16 }]}>Riepilogo</Text>
-                    <View style={{ backgroundColor: "#0A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "#1A1A1A", overflow: "hidden", marginBottom: 24 }}>
-                      {righe.map((r, i) => (
-                        <View key={r.label} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 13, paddingHorizontal: 16, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: "#141414" }}>
-                          <Text style={{ color: "#555", fontSize: 12, width: 70, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</Text>
-                          <Text style={{ color: "#DDD", fontSize: 14, fontWeight: "600", flex: 1 }}>{r.value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    <View style={st.mBtns}>
-                      <Pressable style={st.mCancel} onPress={() => setModalStep("form")}>
-                        <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>← Indietro</Text>
-                      </Pressable>
-                      <Pressable style={st.mConfirm} onPress={salvaAggiungi}>
-                        <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Salva</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })()}
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setShowAggiungi(false)}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
+                </Pressable>
+                <Pressable
+                  style={[st.mConfirm, (!newCliente || !newOra) && { opacity: 0.4 }]}
+                  onPress={() => {
+                    if (!newCliente) { msg("Inserisci il nome del cliente"); return; }
+                    if (!newOra) { msg("Seleziona un orario"); return; }
+                    setModalStep("riepilogo");
+                  }}
+                >
+                  <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Avanti →</Text>
+                </Pressable>
+              </View>
             </ScrollView>
           </View>
         </View>
       )}
+
+      {/* MODAL AGGIUNGI — STEP 2: RIEPILOGO */}
+      {showAggiungi && modalStep === "riepilogo" && (() => {
+        const barbNome = barbieri.find((b) => b.id === newBarbiere)?.nome || "";
+        const servObj = servizi.find((sv) => sv.id === newServizio);
+        const righe = [
+          { label: "Cliente", value: newCliente },
+          ...(newTelefono ? [{ label: "Telefono", value: newTelefono }] : []),
+          { label: "Data", value: fmtDataLunga(dataCorrente) },
+          { label: "Orario", value: newOra },
+          { label: "Barbiere", value: barbNome },
+          { label: "Servizio", value: servObj ? `${servObj.nome} • ${servObj.durata_minuti} min` : "" },
+        ];
+        return (
+          <View style={st.modalOv}>
+            <View style={st.modal}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.mTitle}>Riepilogo</Text>
+                  <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)}</Text>
+                </View>
+                <Pressable onPress={() => setShowAggiungi(false)} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
+              </View>
+              <View style={{ backgroundColor: "#0A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "#1A1A1A", overflow: "hidden", marginBottom: 24 }}>
+                {righe.map((r, i) => (
+                  <View key={r.label} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: "#141414" }}>
+                    <Text style={{ color: "#555", fontSize: 11, width: 68, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</Text>
+                    <Text style={{ color: "#DDD", fontSize: 14, fontWeight: "600", flex: 1 }}>{r.value}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setModalStep("form")}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>← Indietro</Text>
+                </Pressable>
+                <Pressable style={st.mConfirm} onPress={salvaAggiungi}>
+                  <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Salva</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* BANNER SUCCESSO */}
       {showSuccessBanner && (
