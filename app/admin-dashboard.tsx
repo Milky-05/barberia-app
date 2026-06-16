@@ -354,9 +354,7 @@ export default function AdminDashboard() {
   };
   const segnaAssente = async () => {
     if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
-    const giorni = assenzaFine
-      ? Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1
-      : null;
+    const giorni = Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1;
     try {
       const res = await fetchAuth(`${BACKEND_URL}/api/admin/barbiere-assente`, {
         method: "POST",
@@ -1342,16 +1340,18 @@ export default function AdminDashboard() {
               {Platform.OS === "web" ? (
                 // @ts-ignore
                 <input type="date" value={assenzaData} onChange={(e: any) => setAssenzaData(e.target.value)} min={todayStr}
-                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box", outline: "none" }} />
+                  onFocus={() => setFocusedInput("assenzaData")} onBlur={() => setFocusedInput(null)}
+                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaData" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
               ) : (
                 <TextInput style={[st.mInput, { marginBottom: 14 }]} value={assenzaData} onChangeText={setAssenzaData} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
               )}
 
-              <Text style={st.mLabel}>DATA FINE <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale — lascia vuoto per indeterminata)</Text></Text>
+              <Text style={st.mLabel}>DATA FINE</Text>
               {Platform.OS === "web" ? (
                 // @ts-ignore
                 <input type="date" value={assenzaFine} onChange={(e: any) => setAssenzaFine(e.target.value)} min={assenzaData || todayStr}
-                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: assenzaFine ? "#FFF" : "#333", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box", outline: "none" }} />
+                  onFocus={() => setFocusedInput("assenzaFine")} onBlur={() => setFocusedInput(null)}
+                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaFine" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
               ) : (
                 <TextInput style={[st.mInput, { marginBottom: 16 }]} value={assenzaFine} onChangeText={setAssenzaFine} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
               )}
@@ -1388,7 +1388,8 @@ export default function AdminDashboard() {
                   onPress={() => {
                     if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
                     if (!assenzaData) { msg("Inserisci la data di inizio"); return; }
-                    if (assenzaFine && assenzaFine < assenzaData) { msg("La data di fine non può essere prima dell'inizio"); return; }
+                    if (!assenzaFine) { msg("Inserisci la data di fine"); return; }
+                    if (assenzaFine < assenzaData) { msg("La data di fine non può essere prima dell'inizio"); return; }
                     setAssenzaStep("riepilogo");
                   }}
                 >
@@ -1403,14 +1404,12 @@ export default function AdminDashboard() {
       {/* MODAL ASSENZA — STEP 2: RIEPILOGO */}
       {showAssenza && assenzaStep === "riepilogo" && (() => {
         const barbNome = barbieri.find((b) => b.id === assenzaBarbiere)?.nome || "";
-        const giorni = assenzaFine
-          ? Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1
-          : null;
+        const giorni = Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1;
         const righe = [
           { label: "Barbiere", value: barbNome },
           { label: "Inizio", value: fmtDataLunga(assenzaData) },
-          { label: "Fine", value: assenzaFine ? fmtDataLunga(assenzaFine) : "Indeterminata" },
-          { label: "Giorni", value: giorni ? `${giorni} ${giorni === 1 ? "giorno" : "giorni"}` : "Indeterminati" },
+          { label: "Fine", value: fmtDataLunga(assenzaFine) },
+          { label: "Giorni", value: `${giorni} ${giorni === 1 ? "giorno" : "giorni"}` },
           { label: "Motivo", value: assenzaMotivo || "Assente" },
         ];
         return (
