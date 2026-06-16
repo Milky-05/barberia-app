@@ -1128,116 +1128,93 @@ export default function AdminDashboard() {
         <View style={st.modalOv}>
           <View style={st.modal}>
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-              <Text style={st.mTitle}>Nuovo Appuntamento</Text>
-              <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)}</Text>
-              <Text style={st.mLabel}>NOME CLIENTE</Text>
-              <TextInput
-                style={st.mInput}
-                value={newCliente}
-                onChangeText={setNewCliente}
-                placeholder="Nome e cognome"
-                placeholderTextColor="#333"
-              />
-              <Text style={st.mLabel}>TELEFONO <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale)</Text></Text>
-              <TextInput
-                style={st.mInput}
-                value={newTelefono}
-                onChangeText={setNewTelefono}
-                placeholder="Es: 333 1234567"
-                placeholderTextColor="#333"
-                keyboardType="phone-pad"
-              />
-              <Text style={st.mLabel}>BARBIERE</Text>
-              <View style={st.mGrid}>
-                {barbieri
-                  .filter((b) => !b.assente)
-                  .map((b) => (
-                    <Pressable
-                      key={b.id}
-                      style={[st.mChip, newBarbiere === b.id && st.mChipA]}
-                      onPress={() => {
-                        setNewBarbiere(b.id);
-                        caricaOrariNuovo(b.id, newServizio);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          st.mChipText,
-                          newBarbiere === b.id && st.mChipTextA,
-                        ]}
-                      >
-                        {b.nome}
-                      </Text>
-                    </Pressable>
-                  ))}
+              {/* Header */}
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 4 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.mTitle}>Nuovo Appuntamento</Text>
+                  <Text style={st.mDate}>📅 {fmtDataLunga(dataCorrente)}</Text>
+                </View>
+                <Pressable onPress={() => setShowAggiungi(false)} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
               </View>
-              <Text style={st.mLabel}>SERVIZIO</Text>
-              <View style={st.mGrid}>
-                {servizi.map((sv) => (
+
+              {/* Nome */}
+              <Text style={st.mLabel}>NOME CLIENTE</Text>
+              <TextInput style={[st.mInput, { marginBottom: 12 }]} value={newCliente} onChangeText={setNewCliente} placeholder="Nome e cognome" placeholderTextColor="#333" />
+
+              {/* Telefono */}
+              <Text style={st.mLabel}>TELEFONO <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale)</Text></Text>
+              <TextInput style={[st.mInput, { marginBottom: 16 }]} value={newTelefono} onChangeText={setNewTelefono} placeholder="Es: 333 1234567" placeholderTextColor="#333" keyboardType="phone-pad" />
+
+              {/* Barbiere */}
+              <Text style={st.mLabel}>BARBIERE</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                {barbieri.filter((b) => !b.assente).map((b) => (
                   <Pressable
-                    key={sv.id}
-                    style={[st.mChip, newServizio === sv.id && st.mChipA]}
-                    onPress={() => {
-                      setNewServizio(sv.id);
-                      caricaOrariNuovo(newBarbiere, sv.id);
-                    }}
+                    key={b.id}
+                    style={[st.mChip, { flex: 1, alignItems: "center" }, newBarbiere === b.id && st.mChipA]}
+                    onPress={() => { setNewBarbiere(b.id); caricaOrariNuovo(b.id, newServizio); }}
                   >
-                    <Text
-                      style={[
-                        st.mChipText,
-                        newServizio === sv.id && st.mChipTextA,
-                      ]}
-                    >
-                      {sv.nome}
-                    </Text>
+                    <Text style={[st.mChipText, newBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
                   </Pressable>
                 ))}
               </View>
-              <Text style={st.mLabel}>ORARIO DISPONIBILE</Text>
-              {loadingOrari ? (
-                <ActivityIndicator
-                  color="#D4AF37"
-                  size="small"
-                  style={{ marginVertical: 16 }}
-                />
-              ) : orariNuovo.length === 0 ? (
-                <Text style={st.mNoSlot}>Nessun orario disponibile</Text>
+
+              {/* Servizio — dropdown nativo su web */}
+              <Text style={st.mLabel}>SERVIZIO</Text>
+              {Platform.OS === "web" ? (
+                // @ts-ignore
+                <select
+                  value={newServizio}
+                  onChange={(e: any) => {
+                    const id = parseInt(e.target.value);
+                    setNewServizio(id);
+                    caricaOrariNuovo(newBarbiere, id);
+                  }}
+                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: "#CCC", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", cursor: "pointer", outline: "none" }}
+                >
+                  {servizi.map((sv) => (
+                    // @ts-ignore
+                    <option key={sv.id} value={sv.id}>{sv.nome}</option>
+                  ))}
+                </select>
               ) : (
-                <View style={st.oGrid}>
-                  {orariNuovo.map((o) => (
-                    <Pressable
-                      key={o}
-                      style={[st.oBtn, newOra === o && st.oBtnA]}
-                      onPress={() => setNewOra(o)}
-                    >
-                      <Text style={[st.oText, newOra === o && st.oTextA]}>
-                        {o}
-                      </Text>
+                <View style={[st.mGrid, { marginBottom: 16 }]}>
+                  {servizi.map((sv) => (
+                    <Pressable key={sv.id} style={[st.mChip, newServizio === sv.id && st.mChipA]} onPress={() => { setNewServizio(sv.id); caricaOrariNuovo(newBarbiere, sv.id); }}>
+                      <Text style={[st.mChipText, newServizio === sv.id && st.mChipTextA]}>{sv.nome}</Text>
                     </Pressable>
                   ))}
                 </View>
               )}
+
+              {/* Orario */}
+              <Text style={st.mLabel}>ORARIO DISPONIBILE</Text>
+              {loadingOrari ? (
+                <ActivityIndicator color="#D4AF37" size="small" style={{ marginVertical: 12 }} />
+              ) : orariNuovo.length === 0 ? (
+                <Text style={st.mNoSlot}>Nessun orario disponibile</Text>
+              ) : (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+                  {orariNuovo.map((o) => (
+                    <Pressable
+                      key={o}
+                      onPress={() => setNewOra(o)}
+                      style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: newOra === o ? "#D4AF37" : "#1E1E1E", backgroundColor: newOra === o ? "rgba(212,175,55,0.1)" : "#0A0A0A" }}
+                    >
+                      <Text style={{ color: newOra === o ? "#D4AF37" : "#555", fontSize: 13, fontWeight: "700" }}>{o}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
               <View style={st.mBtns}>
-                <Pressable
-                  style={st.mCancel}
-                  onPress={() => setShowAggiungi(false)}
-                >
-                  <Text
-                    style={{ color: "#666", fontWeight: "700", fontSize: 14 }}
-                  >
-                    Annulla
-                  </Text>
+                <Pressable style={st.mCancel} onPress={() => setShowAggiungi(false)}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
                 </Pressable>
                 <Pressable style={st.mConfirm} onPress={salvaAggiungi}>
-                  <Text
-                    style={{
-                      color: "#0A0A0A",
-                      fontWeight: "800",
-                      fontSize: 14,
-                    }}
-                  >
-                    Salva
-                  </Text>
+                  <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Salva</Text>
                 </Pressable>
               </View>
             </ScrollView>
