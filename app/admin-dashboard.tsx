@@ -745,30 +745,6 @@ export default function AdminDashboard() {
               </Pressable>
             )}
 
-            {/* Barbieri assenti/programmati */}
-            {barbieriAssenti.map((b) => (
-              <View key={b.id} style={st.absCard}>
-                <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
-                <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                  <Text style={st.absBtnText}>Riattiva</Text>
-                </Pressable>
-              </View>
-            ))}
-            {barbieriProgrammati.map((b) => {
-              const info = JSON.parse(b.motivo_assenza);
-              const dataInizio = info.tipo === "permesso"
-                ? new Date(info.inizio).toISOString().split("T")[0]
-                : info.inizio;
-              return (
-                <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)" }]}>
-                  <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {info.tipo === "permesso" ? "permesso" : "assenza"} prog. il {fmtDataShort(dataInizio)}</Text>
-                  <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
-                    <Text style={st.absBtnText}>Annulla</Text>
-                  </Pressable>
-                </View>
-              );
-            })}
-
             {/* Pulsanti Assente / Permesso */}
             <View style={[st.actRow, { marginTop: 16 }]}>
               <Pressable style={st.actRed} onPress={() => {
@@ -792,6 +768,40 @@ export default function AdminDashboard() {
             </View>
 
             {/* Card per barbiere — solo su giorni aperti, solo i barbieri di turno quel giorno */}
+            {(barbieriAssenti.length > 0 || barbieriProgrammati.length > 0) && (
+              <View style={{ marginTop: 16, paddingHorizontal: 16, gap: 8 }}>
+                {barbieriAssenti.map((b) => (
+                  <View key={b.id} style={[st.absCard, { marginBottom: 0 }]}>
+                    <Text style={st.absText}>{isPermessoBarbiere(b) ? "🟡" : "🔴"} {b.nome} {isPermessoBarbiere(b) ? "è in permesso" : "è assente"}</Text>
+                    <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                      <Text style={st.absBtnText}>Riattiva</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                {barbieriProgrammati.map((b) => {
+                  const info = JSON.parse(b.motivo_assenza);
+                  const isP = info.tipo === "permesso";
+                  const inizio = isP ? new Date(info.inizio).toISOString().split("T")[0] : info.inizio;
+                  const fine = info.fine;
+                  const giorni = info.giorni;
+                  const durataStr = fine
+                    ? `dal ${fmtDataShort(inizio)} al ${fmtDataShort(fine)}${giorni ? ` (${giorni} ${giorni === 1 ? "giorno" : "giorni"})` : ""}`
+                    : `dal ${fmtDataShort(inizio)} (durata indeterminata)`;
+                  return (
+                    <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)", marginBottom: 0 }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {isP ? "permesso" : "assenza"} programmata</Text>
+                        <Text style={{ color: "#666", fontSize: 11, marginTop: 2 }}>{durataStr}</Text>
+                      </View>
+                      <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
+                        <Text style={st.absBtnText}>Annulla</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
             {orariGiornata.length > 0 && (
               <View style={{ marginTop: 16, paddingHorizontal: 16, paddingBottom: 16 }}>
                 {(() => {
