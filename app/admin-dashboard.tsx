@@ -100,6 +100,9 @@ export default function AdminDashboard() {
   const [permessoMinuti, setPermessoMinuti] = useState(60);
   const [assenzaData, setAssenzaData] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; });
   const [assenzaGiorni, setAssenzaGiorni] = useState<number | null>(1);
+  const [assenzaFine, setAssenzaFine] = useState("");
+  const [assenzaStep, setAssenzaStep] = useState<"form" | "riepilogo">("form");
+  const [showAssenzaBanner, setShowAssenzaBanner] = useState(false);
   const [permessoData, setPermessoData] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; });
   const [permessoOraInizio, setPermessoOraInizio] = useState(() => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; });
   const [showModifica, setShowModifica] = useState(false);
@@ -351,15 +354,9 @@ export default function AdminDashboard() {
   };
   const segnaAssente = async () => {
     if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
-    const bN = barbieri.find((b) => b.id === assenzaBarbiere)?.nome || "";
-    const oggi = new Date().toISOString().split("T")[0];
-    const isOggi = assenzaData <= oggi;
-    if (isOggi && Platform.OS === "web") {
-      const giorniTxt = assenzaGiorni
-        ? `${assenzaGiorni} ${assenzaGiorni === 1 ? "giorno" : "giorni"}`
-        : "tempo indeterminato";
-      if (!window.confirm(`Cancellare gli appuntamenti di ${bN} per ${giorniTxt}?`)) return;
-    }
+    const giorni = assenzaFine
+      ? Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1
+      : null;
     try {
       const res = await fetchAuth(`${BACKEND_URL}/api/admin/barbiere-assente`, {
         method: "POST",
@@ -367,16 +364,19 @@ export default function AdminDashboard() {
           barbiere_id: assenzaBarbiere,
           motivo: assenzaMotivo || "Assente",
           data_inizio: assenzaData,
-          giorni: assenzaGiorni,
+          giorni,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        msg(data.messaggio);
         setShowAssenza(false);
+        setAssenzaStep("form");
         setAssenzaMotivo("");
+        setAssenzaFine("");
         caricaBarbieri();
         caricaPrenotazioni();
+        setShowAssenzaBanner(true);
+        setTimeout(() => setShowAssenzaBanner(false), 3500);
       } else msg(data.error);
     } catch (err) { msg("Errore"); }
   };
@@ -1314,106 +1314,137 @@ export default function AdminDashboard() {
         </View>
       )}
 
-      {/* MODAL ASSENZA */}
-      {showAssenza && (
+      {/* MODAL ASSENZA — STEP 1: FORM */}
+      {showAssenza && assenzaStep === "form" && (
         <View style={st.modalOv}>
           <View style={st.modal}>
-            <Text style={st.mTitle}>🔴 Segna Assente</Text>
-
-            <Text style={st.mLabel}>DATA</Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-              {[{ label: "Oggi", val: todayStr }, { label: "Domani", val: domaniStr }].map(({ label, val }) => (
-                <Pressable
-                  key={label}
-                  style={[st.oreBtn, assenzaData === val && st.oreBtnA, { flex: 1 }]}
-                  onPress={() => setAssenzaData(val)}
-                >
-                  <Text style={[st.oreBtnText, assenzaData === val && st.oreBtnTextA]}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            {Platform.OS === "web" ? (
-              // @ts-ignore
-              <input
-                type="date"
-                value={assenzaData}
-                onChange={(e: any) => setAssenzaData(e.target.value)}
-                min={todayStr}
-                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box" }}
-              />
-            ) : (
-              <TextInput
-                style={[st.mInput, { marginBottom: 16 }]}
-                value={assenzaData}
-                onChangeText={setAssenzaData}
-                placeholder="AAAA-MM-GG"
-                placeholderTextColor="#333"
-                keyboardType="numbers-and-punctuation"
-              />
-            )}
-
-            <Text style={st.mLabel}>DURATA</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {([1, 2, 3, 7] as number[]).map((g) => (
-                <Pressable
-                  key={g}
-                  style={[st.oreBtn, assenzaGiorni === g && st.oreBtnA]}
-                  onPress={() => setAssenzaGiorni(g)}
-                >
-                  <Text style={[st.oreBtnText, assenzaGiorni === g && st.oreBtnTextA]}>
-                    {g === 7 ? "1 sett." : `${g}g`}
-                  </Text>
-                </Pressable>
-              ))}
-              <Pressable
-                style={[st.oreBtn, assenzaGiorni === null && st.oreBtnA]}
-                onPress={() => setAssenzaGiorni(null)}
-              >
-                <Text style={[st.oreBtnText, assenzaGiorni === null && st.oreBtnTextA]}>Indeterminata</Text>
-              </Pressable>
-            </View>
-
-            {barbieri.filter((b) => !b.assente).length > 1 && (
-              <>
-                <Text style={st.mLabel}>BARBIERE</Text>
-                <View style={st.mGrid}>
-                  {barbieri.filter((b) => !b.assente).map((b) => (
-                    <Pressable key={b.id} style={[st.mChip, assenzaBarbiere === b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}>
-                      <Text style={[st.mChipText, assenzaBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
-                    </Pressable>
-                  ))}
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.mTitle, { color: "#F44336" }]}>🔴 Segna Assente</Text>
                 </View>
-              </>
-            )}
+                <Pressable onPress={() => setShowAssenza(false)} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
+              </View>
 
-            <Text style={st.mLabel}>MOTIVO</Text>
-            <TextInput
-              style={st.mInput}
-              value={assenzaMotivo}
-              onChangeText={setAssenzaMotivo}
-              placeholder="Es: Malato..."
-              placeholderTextColor="#333"
-            />
+              <Text style={st.mLabel}>DATA INIZIO</Text>
+              {Platform.OS === "web" ? (
+                // @ts-ignore
+                <input type="date" value={assenzaData} onChange={(e: any) => setAssenzaData(e.target.value)} min={todayStr}
+                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box", outline: "none" }} />
+              ) : (
+                <TextInput style={[st.mInput, { marginBottom: 14 }]} value={assenzaData} onChangeText={setAssenzaData} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
+              )}
 
-            {assenzaData <= todayStr ? (
-              <Text style={{ color: "#F44336", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
-                {`Gli appuntamenti${assenzaGiorni ? ` dei prossimi ${assenzaGiorni > 1 ? `${assenzaGiorni} giorni` : "giorno"}` : ""} verranno cancellati e i clienti notificati.`}
+              <Text style={st.mLabel}>DATA FINE <Text style={{ color: "#555", fontWeight: "400" }}>(opzionale — lascia vuoto per indeterminata)</Text></Text>
+              {Platform.OS === "web" ? (
+                // @ts-ignore
+                <input type="date" value={assenzaFine} onChange={(e: any) => setAssenzaFine(e.target.value)} min={assenzaData || todayStr}
+                  style={{ background: "#0A0A0A", border: "1px solid #2A2A2A", borderRadius: 10, padding: "12px 14px", color: assenzaFine ? "#FFF" : "#333", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box", outline: "none" }} />
+              ) : (
+                <TextInput style={[st.mInput, { marginBottom: 16 }]} value={assenzaFine} onChangeText={setAssenzaFine} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
+              )}
+
+              {barbieri.filter((b) => !b.assente).length > 1 && (
+                <>
+                  <Text style={st.mLabel}>BARBIERE</Text>
+                  <View style={[st.mGrid, { marginBottom: 16 }]}>
+                    {barbieri.filter((b) => !b.assente).map((b) => (
+                      <Pressable key={b.id} style={[st.mChip, { flex: 1, alignItems: "center" }, assenzaBarbiere === b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}>
+                        <Text style={[st.mChipText, assenzaBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <Text style={st.mLabel}>MOTIVO</Text>
+              <TextInput
+                style={[st.mInput, { marginBottom: 20 }]}
+                value={assenzaMotivo}
+                onChangeText={setAssenzaMotivo}
+                placeholder="Es: Malato..."
+                placeholderTextColor="#333"
+                selectionColor="#D4AF37"
+              />
+
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setShowAssenza(false)}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
+                </Pressable>
+                <Pressable
+                  style={[st.mConfirm, { backgroundColor: "#C0392B" }, !assenzaBarbiere && { opacity: 0.4 }]}
+                  onPress={() => {
+                    if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
+                    if (!assenzaData) { msg("Inserisci la data di inizio"); return; }
+                    if (assenzaFine && assenzaFine < assenzaData) { msg("La data di fine non può essere prima dell'inizio"); return; }
+                    setAssenzaStep("riepilogo");
+                  }}
+                >
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Avanti →</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* MODAL ASSENZA — STEP 2: RIEPILOGO */}
+      {showAssenza && assenzaStep === "riepilogo" && (() => {
+        const barbNome = barbieri.find((b) => b.id === assenzaBarbiere)?.nome || "";
+        const giorni = assenzaFine
+          ? Math.round((new Date(assenzaFine).getTime() - new Date(assenzaData).getTime()) / 86400000) + 1
+          : null;
+        const righe = [
+          { label: "Barbiere", value: barbNome },
+          { label: "Inizio", value: fmtDataLunga(assenzaData) },
+          { label: "Fine", value: assenzaFine ? fmtDataLunga(assenzaFine) : "Indeterminata" },
+          { label: "Giorni", value: giorni ? `${giorni} ${giorni === 1 ? "giorno" : "giorni"}` : "Indeterminati" },
+          { label: "Motivo", value: assenzaMotivo || "Assente" },
+        ];
+        return (
+          <View style={st.modalOv}>
+            <View style={st.modal}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.mTitle, { color: "#F44336" }]}>Riepilogo Assenza</Text>
+                </View>
+                <Pressable onPress={() => setShowAssenza(false)} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
+              </View>
+              <View style={{ backgroundColor: "#0A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "#1A1A1A", overflow: "hidden", marginBottom: 16 }}>
+                {righe.map((r, i) => (
+                  <View key={r.label} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: "#141414" }}>
+                    <Text style={{ color: "#555", fontSize: 11, width: 68, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</Text>
+                    <Text style={{ color: "#DDD", fontSize: 14, fontWeight: "600", flex: 1 }}>{r.value}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={{ color: "#F44336", fontSize: 12, marginBottom: 20, lineHeight: 17 }}>
+                Gli appuntamenti esistenti verranno cancellati e i clienti notificati.
               </Text>
-            ) : (
-              <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
-                {`L'assenza verrà attivata automaticamente il ${fmtDataShort(assenzaData)}.`}
-              </Text>
-            )}
-
-            <View style={st.mBtns}>
-              <Pressable style={st.mCancel} onPress={() => setShowAssenza(false)}>
-                <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
-              </Pressable>
-              <Pressable style={[st.mConfirm, { backgroundColor: "#F44336" }]} onPress={segnaAssente}>
-                <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
-              </Pressable>
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setAssenzaStep("form")}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>← Indietro</Text>
+                </Pressable>
+                <Pressable style={[st.mConfirm, { backgroundColor: "#C0392B" }]} onPress={segnaAssente}>
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
+        );
+      })()}
+
+      {/* BANNER ASSENZA */}
+      {showAssenzaBanner && (
+        <View style={{ position: "absolute", bottom: 90, left: 20, right: 20, backgroundColor: "#1A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "rgba(244,67,54,0.3)", paddingVertical: 14, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12, zIndex: 200 }}>
+          <Text style={{ fontSize: 20 }}>🔴</Text>
+          <Text style={{ color: "#F44336", fontSize: 14, fontWeight: "700", flex: 1 }}>
+            {barbieri.find((b) => b.id === assenzaBarbiere)?.nome || "Il barbiere"} è ora assente — i clienti sono stati notificati
+          </Text>
         </View>
       )}
 
