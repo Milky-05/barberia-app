@@ -64,6 +64,103 @@ LocaleConfig.defaultLocale = "it";
 
 const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
 
+const MESI_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const GIORNI_IT = ["Lu","Ma","Me","Gi","Ve","Sa","Do"];
+
+function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
+  value: string;
+  onChange: (v: string) => void;
+  min?: string;
+  marginBottom?: number;
+}) {
+  const oggi = new Date();
+  const oggiStr = `${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,"0")}-${String(oggi.getDate()).padStart(2,"0")}`;
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split("-")[0]) : oggi.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split("-")[1]) - 1 : oggi.getMonth());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayMon = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+
+  const fmtDisplay = (v: string) => { const [y,m,d] = v.split("-"); return `${d}/${m}/${y}`; };
+
+  const prevMonth = () => viewMonth === 0 ? (setViewMonth(11), setViewYear(y => y-1)) : setViewMonth(m => m-1);
+  const nextMonth = () => viewMonth === 11 ? (setViewMonth(0), setViewYear(y => y+1)) : setViewMonth(m => m+1);
+
+  const selectDay = (day: number) => {
+    const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    if (min && ds < min) return;
+    onChange(ds);
+    setOpen(false);
+  };
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDayMon; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const rows: (number | null)[][] = [];
+  for (let r = 0; r < Math.ceil(cells.length / 7); r++) rows.push(cells.slice(r*7, r*7+7));
+
+  return (
+    <View style={{ marginBottom }}>
+      <Pressable
+        onPress={() => setOpen(o => !o)}
+        style={{ backgroundColor: "#0A0A0A", borderWidth: 1.5, borderColor: open ? "#D4AF37" : "#1A1A1A", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+      >
+        <Text style={{ color: value ? "#FFF" : "#444", fontSize: 15 }}>{value ? fmtDisplay(value) : "GG / MM / AAAA"}</Text>
+        <Text style={{ color: open ? "#D4AF37" : "#444", fontSize: 11 }}>{open ? "▲" : "▼"}</Text>
+      </Pressable>
+
+      {open && (
+        <View style={{ backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14, marginTop: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+            <Pressable onPress={prevMonth} style={{ padding: 10 }}>
+              <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>‹</Text>
+            </Pressable>
+            <Text style={{ flex: 1, textAlign: "center", color: "#DDD", fontWeight: "700", fontSize: 13, letterSpacing: 1 }}>
+              {MESI_IT[viewMonth].toUpperCase()} {viewYear}
+            </Text>
+            <Pressable onPress={nextMonth} style={{ padding: 10 }}>
+              <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>›</Text>
+            </Pressable>
+          </View>
+
+          <View style={{ flexDirection: "row", marginBottom: 8 }}>
+            {GIORNI_IT.map(g => (
+              <View key={g} style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ color: "#444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>{g}</Text>
+              </View>
+            ))}
+          </View>
+
+          {rows.map((row, ri) => (
+            <View key={ri} style={{ flexDirection: "row" }}>
+              {Array.from({ length: 7 }, (_, ci) => {
+                const day = row[ci] ?? null;
+                if (!day) return <View key={ci} style={{ flex: 1, paddingVertical: 8 }} />;
+                const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                const isSelected = ds === value;
+                const isOggi = ds === oggiStr;
+                const isDisabled = !!(min && ds < min);
+                return (
+                  <Pressable
+                    key={ci}
+                    onPress={() => !isDisabled && selectDay(day)}
+                    style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8, backgroundColor: isSelected ? "#D4AF37" : "transparent", opacity: isDisabled ? 0.2 : 1 }}
+                  >
+                    <Text style={{ color: isSelected ? "#000" : isOggi ? "#D4AF37" : "#AAA", fontSize: 13, fontWeight: isSelected || isOggi ? "700" : "400" }}>
+                      {day}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function AdminDashboard() {
   const [token, setToken] = useState("");
   const [utente, setUtente] = useState<any>(null);
@@ -1337,24 +1434,10 @@ export default function AdminDashboard() {
               </View>
 
               <Text style={st.mLabel}>DATA INIZIO</Text>
-              {Platform.OS === "web" ? (
-                // @ts-ignore
-                <input type="date" value={assenzaData} onChange={(e: any) => setAssenzaData(e.target.value)} min={todayStr}
-                  onFocus={() => setFocusedInput("assenzaData")} onBlur={() => setFocusedInput(null)}
-                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaData" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 14, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
-              ) : (
-                <TextInput style={[st.mInput, { marginBottom: 14 }]} value={assenzaData} onChangeText={setAssenzaData} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
-              )}
+              <CalendarioInline value={assenzaData} onChange={setAssenzaData} min={todayStr} marginBottom={14} />
 
               <Text style={st.mLabel}>DATA FINE</Text>
-              {Platform.OS === "web" ? (
-                // @ts-ignore
-                <input type="date" value={assenzaFine} onChange={(e: any) => setAssenzaFine(e.target.value)} min={assenzaData || todayStr}
-                  onFocus={() => setFocusedInput("assenzaFine")} onBlur={() => setFocusedInput(null)}
-                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaFine" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 16, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
-              ) : (
-                <TextInput style={[st.mInput, { marginBottom: 16 }]} value={assenzaFine} onChangeText={setAssenzaFine} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
-              )}
+              <CalendarioInline value={assenzaFine} onChange={setAssenzaFine} min={assenzaData || todayStr} marginBottom={16} />
 
               {barbieri.filter((b) => !b.assente).length > 1 && (
                 <>
