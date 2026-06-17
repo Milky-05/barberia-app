@@ -77,12 +77,23 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   const oggiStr = `${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,"0")}-${String(oggi.getDate()).padStart(2,"0")}`;
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [measuredH, setMeasuredH] = useState(0);
   const animVal = useRef(new Animated.Value(0)).current;
+  const heightAnim = useRef(new Animated.Value(0)).current;
   const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split("-")[0]) : oggi.getFullYear());
   const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split("-")[1]) - 1 : oggi.getMonth());
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayMon = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDayMon; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const rows: (number | null)[][] = [];
+  for (let r = 0; r < Math.ceil(cells.length / 7); r++) rows.push(cells.slice(r*7, r*7+7));
+
+  // fallback height se non ancora misurato: header(52) + intestazione giorni(30) + righe(30px cad) + padding(28)
+  const estimatedH = measuredH > 0 ? measuredH : 110 + rows.length * 30;
 
   const fmtDisplay = (v: string) => { const [y,m,d] = v.split("-"); return `${d}/${m}/${y}`; };
 
@@ -92,12 +103,18 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   const openCal = () => {
     setVisible(true);
     setOpen(true);
-    Animated.timing(animVal, { toValue: 1, duration: 220, useNativeDriver: false }).start();
+    Animated.parallel([
+      Animated.timing(animVal,   { toValue: 1, duration: 260, useNativeDriver: false }),
+      Animated.timing(heightAnim, { toValue: estimatedH, duration: 260, useNativeDriver: false }),
+    ]).start();
   };
 
   const closeCal = () => {
     setOpen(false);
-    Animated.timing(animVal, { toValue: 0, duration: 160, useNativeDriver: false }).start(() => setVisible(false));
+    Animated.parallel([
+      Animated.timing(animVal,   { toValue: 0, duration: 260, useNativeDriver: false }),
+      Animated.timing(heightAnim, { toValue: 0, duration: 260, useNativeDriver: false }),
+    ]).start(() => setVisible(false));
   };
 
   const selectDay = (day: number) => {
@@ -106,12 +123,6 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
     onChange(ds);
     closeCal();
   };
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < firstDayMon; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const rows: (number | null)[][] = [];
-  for (let r = 0; r < Math.ceil(cells.length / 7); r++) rows.push(cells.slice(r*7, r*7+7));
 
   return (
     <View style={{ marginBottom }}>
@@ -123,55 +134,57 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
         <Text style={{ color: open ? "#D4AF37" : "#444", fontSize: 11 }}>{open ? "▲" : "▼"}</Text>
       </Pressable>
 
+      {/* wrapper che anima l'altezza — impedisce al layout di collassare di scatto */}
       {visible && (
-        <Animated.View style={{
-          opacity: animVal,
-          transform: [{ translateY: animVal.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }],
-          backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14, marginTop: 6,
-        }}>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-            <Pressable onPress={prevMonth} style={{ padding: 10 }}>
-              <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>‹</Text>
-            </Pressable>
-            <Text style={{ flex: 1, textAlign: "center", color: "#DDD", fontWeight: "700", fontSize: 13, letterSpacing: 1 }}>
-              {MESI_IT[viewMonth].toUpperCase()} {viewYear}
-            </Text>
-            <Pressable onPress={nextMonth} style={{ padding: 10 }}>
-              <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>›</Text>
-            </Pressable>
-          </View>
+        <Animated.View style={{ height: heightAnim, overflow: "hidden", marginTop: 6 }}>
+          <Animated.View
+            onLayout={(e) => { const h = e.nativeEvent.layout.height; if (h > 0) setMeasuredH(h); }}
+            style={{ opacity: animVal, backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14 }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+              <Pressable onPress={prevMonth} style={{ padding: 10 }}>
+                <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>‹</Text>
+              </Pressable>
+              <Text style={{ flex: 1, textAlign: "center", color: "#DDD", fontWeight: "700", fontSize: 13, letterSpacing: 1 }}>
+                {MESI_IT[viewMonth].toUpperCase()} {viewYear}
+              </Text>
+              <Pressable onPress={nextMonth} style={{ padding: 10 }}>
+                <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>›</Text>
+              </Pressable>
+            </View>
 
-          <View style={{ flexDirection: "row", marginBottom: 8 }}>
-            {GIORNI_IT.map(g => (
-              <View key={g} style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ color: "#444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>{g}</Text>
+            <View style={{ flexDirection: "row", marginBottom: 8 }}>
+              {GIORNI_IT.map(g => (
+                <View key={g} style={{ flex: 1, alignItems: "center" }}>
+                  <Text style={{ color: "#444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>{g}</Text>
+                </View>
+              ))}
+            </View>
+
+            {rows.map((row, ri) => (
+              <View key={ri} style={{ flexDirection: "row" }}>
+                {Array.from({ length: 7 }, (_, ci) => {
+                  const day = row[ci] ?? null;
+                  if (!day) return <View key={ci} style={{ flex: 1, paddingVertical: 8 }} />;
+                  const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                  const isSelected = ds === value;
+                  const isOggi = ds === oggiStr;
+                  const isDisabled = !!(min && ds < min);
+                  return (
+                    <Pressable
+                      key={ci}
+                      onPress={() => !isDisabled && selectDay(day)}
+                      style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8, backgroundColor: isSelected ? "#D4AF37" : "transparent", opacity: isDisabled ? 0.2 : 1 }}
+                    >
+                      <Text style={{ color: isSelected ? "#000" : isOggi ? "#D4AF37" : "#AAA", fontSize: 13, fontWeight: isSelected || isOggi ? "700" : "400" }}>
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             ))}
-          </View>
-
-          {rows.map((row, ri) => (
-            <View key={ri} style={{ flexDirection: "row" }}>
-              {Array.from({ length: 7 }, (_, ci) => {
-                const day = row[ci] ?? null;
-                if (!day) return <View key={ci} style={{ flex: 1, paddingVertical: 8 }} />;
-                const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-                const isSelected = ds === value;
-                const isOggi = ds === oggiStr;
-                const isDisabled = !!(min && ds < min);
-                return (
-                  <Pressable
-                    key={ci}
-                    onPress={() => !isDisabled && selectDay(day)}
-                    style={{ flex: 1, alignItems: "center", paddingVertical: 8, borderRadius: 8, backgroundColor: isSelected ? "#D4AF37" : "transparent", opacity: isDisabled ? 0.2 : 1 }}
-                  >
-                    <Text style={{ color: isSelected ? "#000" : isOggi ? "#D4AF37" : "#AAA", fontSize: 13, fontWeight: isSelected || isOggi ? "700" : "400" }}>
-                      {day}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
+          </Animated.View>
         </Animated.View>
       )}
     </View>
