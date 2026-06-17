@@ -1341,7 +1341,7 @@ export default function AdminDashboard() {
                 // @ts-ignore
                 <input type="date" value={assenzaData} onChange={(e: any) => setAssenzaData(e.target.value)} min={todayStr}
                   onFocus={() => setFocusedInput("assenzaData")} onBlur={() => setFocusedInput(null)}
-                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaData" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
+                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaData" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 14, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
               ) : (
                 <TextInput style={[st.mInput, { marginBottom: 14 }]} value={assenzaData} onChangeText={setAssenzaData} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
               )}
@@ -1351,7 +1351,7 @@ export default function AdminDashboard() {
                 // @ts-ignore
                 <input type="date" value={assenzaFine} onChange={(e: any) => setAssenzaFine(e.target.value)} min={assenzaData || todayStr}
                   onFocus={() => setFocusedInput("assenzaFine")} onBlur={() => setFocusedInput(null)}
-                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaFine" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
+                  style={{ background: "#0A0A0A", border: focusedInput === "assenzaFine" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 16, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
               ) : (
                 <TextInput style={[st.mInput, { marginBottom: 16 }]} value={assenzaFine} onChangeText={setAssenzaFine} placeholder="AAAA-MM-GG" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
               )}
