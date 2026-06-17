@@ -76,6 +76,8 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   const oggi = new Date();
   const oggiStr = `${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,"0")}-${String(oggi.getDate()).padStart(2,"0")}`;
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const animVal = useRef(new Animated.Value(0)).current;
   const [viewYear, setViewYear] = useState(() => value ? parseInt(value.split("-")[0]) : oggi.getFullYear());
   const [viewMonth, setViewMonth] = useState(() => value ? parseInt(value.split("-")[1]) - 1 : oggi.getMonth());
 
@@ -87,11 +89,22 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   const prevMonth = () => viewMonth === 0 ? (setViewMonth(11), setViewYear(y => y-1)) : setViewMonth(m => m-1);
   const nextMonth = () => viewMonth === 11 ? (setViewMonth(0), setViewYear(y => y+1)) : setViewMonth(m => m+1);
 
+  const openCal = () => {
+    setVisible(true);
+    setOpen(true);
+    Animated.timing(animVal, { toValue: 1, duration: 220, useNativeDriver: false }).start();
+  };
+
+  const closeCal = () => {
+    setOpen(false);
+    Animated.timing(animVal, { toValue: 0, duration: 160, useNativeDriver: false }).start(() => setVisible(false));
+  };
+
   const selectDay = (day: number) => {
     const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     if (min && ds < min) return;
     onChange(ds);
-    setOpen(false);
+    closeCal();
   };
 
   const cells: (number | null)[] = [];
@@ -103,15 +116,19 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   return (
     <View style={{ marginBottom }}>
       <Pressable
-        onPress={() => setOpen(o => !o)}
+        onPress={() => open ? closeCal() : openCal()}
         style={{ backgroundColor: "#0A0A0A", borderWidth: 1.5, borderColor: open ? "#D4AF37" : "#1A1A1A", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
       >
         <Text style={{ color: value ? "#FFF" : "#444", fontSize: 15 }}>{value ? fmtDisplay(value) : "GG / MM / AAAA"}</Text>
         <Text style={{ color: open ? "#D4AF37" : "#444", fontSize: 11 }}>{open ? "▲" : "▼"}</Text>
       </Pressable>
 
-      {open && (
-        <View style={{ backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14, marginTop: 6 }}>
+      {visible && (
+        <Animated.View style={{
+          opacity: animVal,
+          transform: [{ translateY: animVal.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] }) }],
+          backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14, marginTop: 6,
+        }}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
             <Pressable onPress={prevMonth} style={{ padding: 10 }}>
               <Text style={{ color: "#666", fontSize: 18, lineHeight: 18 }}>‹</Text>
@@ -155,7 +172,7 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
               })}
             </View>
           ))}
-        </View>
+        </Animated.View>
       )}
     </View>
   );
