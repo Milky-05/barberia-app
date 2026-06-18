@@ -1247,10 +1247,20 @@ export default function AdminDashboard() {
                       let soloPermOv: { top: number; height: number } | null = null;
                       if (bData?.assente) {
                         if (!isPermessoBarbiere(bData)) {
-                          soloOverlayTipo = "assente";
+                          try {
+                            const info = JSON.parse(bData.motivo_assenza || "{}");
+                            if (!info.inizio || (dataCorrente >= info.inizio && (!info.fine || dataCorrente <= info.fine))) {
+                              soloOverlayTipo = "assente";
+                            }
+                          } catch { soloOverlayTipo = "assente"; }
                         } else if (bData.motivo_assenza) {
-                          soloOverlayTipo = "permesso";
-                          soloPermOv = calcPermOvS(bData.motivo_assenza);
+                          try {
+                            const info = JSON.parse(bData.motivo_assenza);
+                            if (new Date(info.inizio).toISOString().split("T")[0] === dataCorrente) {
+                              soloOverlayTipo = "permesso";
+                              soloPermOv = calcPermOvS(bData.motivo_assenza);
+                            }
+                          } catch {}
                         }
                       } else if (bData) {
                         const prog = barbieriProgrammati.find((bp: any) => {
@@ -1391,10 +1401,22 @@ export default function AdminDashboard() {
                       let permOv: { top: number; height: number } | null = null;
                       if (b.assente) {
                         if (!isPermessoBarbiere(b)) {
-                          overlayTipo = "assente";
+                          // Assenza piena: mostra overlay solo nei giorni compresi tra inizio e fine
+                          try {
+                            const info = JSON.parse(b.motivo_assenza || "{}");
+                            if (!info.inizio || (dataCorrente >= info.inizio && (!info.fine || dataCorrente <= info.fine))) {
+                              overlayTipo = "assente";
+                            }
+                          } catch { overlayTipo = "assente"; }
                         } else if (b.motivo_assenza) {
-                          overlayTipo = "permesso";
-                          permOv = calcPermOv(b.motivo_assenza);
+                          // Permesso attivo: mostra overlay solo nel giorno del permesso
+                          try {
+                            const info = JSON.parse(b.motivo_assenza);
+                            if (new Date(info.inizio).toISOString().split("T")[0] === dataCorrente) {
+                              overlayTipo = "permesso";
+                              permOv = calcPermOv(b.motivo_assenza);
+                            }
+                          } catch {}
                         }
                       } else {
                         // Permesso programmato per la data corrente
