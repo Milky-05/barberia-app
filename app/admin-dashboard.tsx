@@ -328,6 +328,7 @@ export default function AdminDashboard() {
   const [showAssenzaBanner, setShowAssenzaBanner] = useState(false);
   const [permessoData, setPermessoData] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; });
   const [permessoOraInizio, setPermessoOraInizio] = useState(() => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; });
+  const [permessoStep, setPermessoStep] = useState<"form" | "riepilogo">("form");
   const [showModifica, setShowModifica] = useState(false);
   const [modificaApp, setModificaApp] = useState<any>(null);
   const [modNome, setModNome] = useState("");
@@ -615,9 +616,10 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        msg(data.messaggio);
         setShowPermesso(false);
+        setPermessoStep("form");
         caricaBarbieri();
+        caricaPrenotazioni();
       } else msg(data.error);
     } catch (err) { msg("Errore"); }
   };
@@ -1226,25 +1228,42 @@ export default function AdminDashboard() {
                     {/* Colonna appuntamenti */}
                     {(() => {
                       const bData = prenotazioniPerBarbiere[0];
-                      const isAssente = bData?.assente;
-                      const isPermesso = isAssente && isPermessoBarbiere(bData);
-                      let permOv: { top: number; height: number } | null = null;
-                      if (isAssente && isPermesso && bData?.motivo_assenza) {
+                      const calcPermOvS = (motivo: string) => {
                         try {
-                          const info = JSON.parse(bData.motivo_assenza);
-                          if (info.tipo === "permesso" && info.stato === "attivo") {
-                            const inizio = new Date(info.inizio);
-                            const fine = new Date(info.fine);
-                            const sm = inizio.getHours() * 60 + inizio.getMinutes();
-                            const ss = Math.floor(sm / 20) * 20;
-                            const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
-                            const si = orariGiornata.indexOf(oraS);
-                            if (si !== -1) {
-                              const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
-                              permOv = { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
-                            }
-                          }
-                        } catch {}
+                          const info = JSON.parse(motivo);
+                          if (info.tipo !== "permesso") return null;
+                          const inizio = new Date(info.inizio);
+                          const fine = new Date(info.fine);
+                          const sm = inizio.getHours() * 60 + inizio.getMinutes();
+                          const ss = Math.floor(sm / 20) * 20;
+                          const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
+                          const si = orariGiornata.indexOf(oraS);
+                          if (si === -1) return null;
+                          const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
+                          return { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
+                        } catch { return null; }
+                      };
+                      let soloOverlayTipo: "assente" | "permesso" | null = null;
+                      let soloPermOv: { top: number; height: number } | null = null;
+                      if (bData?.assente) {
+                        if (!isPermessoBarbiere(bData)) {
+                          soloOverlayTipo = "assente";
+                        } else if (bData.motivo_assenza) {
+                          soloOverlayTipo = "permesso";
+                          soloPermOv = calcPermOvS(bData.motivo_assenza);
+                        }
+                      } else if (bData) {
+                        const prog = barbieriProgrammati.find((bp: any) => {
+                          if (bp.id !== bData.id) return false;
+                          try {
+                            const info = JSON.parse(bp.motivo_assenza);
+                            return info.tipo === "permesso" && new Date(info.inizio).toISOString().split("T")[0] === dataCorrente;
+                          } catch { return false; }
+                        });
+                        if (prog) {
+                          soloOverlayTipo = "permesso";
+                          soloPermOv = calcPermOvS(prog.motivo_assenza);
+                        }
                       }
                       return (
                         <View style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
@@ -1279,14 +1298,14 @@ export default function AdminDashboard() {
                             );
                           })}
                           {/* Overlay assente — intera colonna */}
-                          {isAssente && !isPermesso && (
-                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                          {soloOverlayTipo === "assente" && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: totalH, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
                               <Text style={{ color: "#F44336", fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>ASSENTE</Text>
                             </View>
                           )}
                           {/* Overlay permesso — fascia oraria */}
-                          {isAssente && isPermesso && permOv && (
-                            <View style={{ position: "absolute", top: permOv.top, left: 0, right: 0, height: permOv.height, backgroundColor: "rgba(30,15,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                          {soloOverlayTipo === "permesso" && soloPermOv && (
+                            <View style={{ position: "absolute", top: soloPermOv.top, left: 0, right: 0, height: soloPermOv.height, backgroundColor: "rgba(30,15,0,0.72)", alignItems: "center", justifyContent: "center" }}>
                               <Text style={{ color: "#E5734A", fontSize: 10, fontWeight: "800", letterSpacing: 1 }}>PERMESSO</Text>
                             </View>
                           )}
@@ -1351,26 +1370,47 @@ export default function AdminDashboard() {
                     {prenotazioniPerBarbiere.map((b) => {
                       const color = getBarbColor(b.id);
                       const appsBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
-                      const isAssente = b.assente;
-                      const isPermesso = isAssente && isPermessoBarbiere(b);
-                      let permOv: { top: number; height: number } | null = null;
-                      if (isAssente && isPermesso && b.motivo_assenza) {
+
+                      // Calcola overlay: assenza attiva, permesso attivo, o permesso programmato per oggi
+                      const calcPermOv = (motivo: string) => {
                         try {
-                          const info = JSON.parse(b.motivo_assenza);
-                          if (info.tipo === "permesso" && info.stato === "attivo") {
-                            const inizio = new Date(info.inizio);
-                            const fine = new Date(info.fine);
-                            const sm = inizio.getHours() * 60 + inizio.getMinutes();
-                            const ss = Math.floor(sm / 20) * 20;
-                            const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
-                            const si = orariGiornata.indexOf(oraS);
-                            if (si !== -1) {
-                              const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
-                              permOv = { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
-                            }
-                          }
-                        } catch {}
+                          const info = JSON.parse(motivo);
+                          if (info.tipo !== "permesso") return null;
+                          const inizio = new Date(info.inizio);
+                          const fine = new Date(info.fine);
+                          const sm = inizio.getHours() * 60 + inizio.getMinutes();
+                          const ss = Math.floor(sm / 20) * 20;
+                          const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
+                          const si = orariGiornata.indexOf(oraS);
+                          if (si === -1) return null;
+                          const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
+                          return { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
+                        } catch { return null; }
+                      };
+                      let overlayTipo: "assente" | "permesso" | null = null;
+                      let permOv: { top: number; height: number } | null = null;
+                      if (b.assente) {
+                        if (!isPermessoBarbiere(b)) {
+                          overlayTipo = "assente";
+                        } else if (b.motivo_assenza) {
+                          overlayTipo = "permesso";
+                          permOv = calcPermOv(b.motivo_assenza);
+                        }
+                      } else {
+                        // Permesso programmato per la data corrente
+                        const prog = barbieriProgrammati.find((bp: any) => {
+                          if (bp.id !== b.id) return false;
+                          try {
+                            const info = JSON.parse(bp.motivo_assenza);
+                            return info.tipo === "permesso" && new Date(info.inizio).toISOString().split("T")[0] === dataCorrente;
+                          } catch { return false; }
+                        });
+                        if (prog) {
+                          overlayTipo = "permesso";
+                          permOv = calcPermOv(prog.motivo_assenza);
+                        }
                       }
+
                       return (
                         <View key={b.id} style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
                           {/* Linee guida slot */}
@@ -1414,13 +1454,13 @@ export default function AdminDashboard() {
                             );
                           })}
                           {/* Overlay assente — intera colonna */}
-                          {isAssente && !isPermesso && (
-                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                          {overlayTipo === "assente" && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, height: totalH, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
                               <Text style={{ color: "#F44336", fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>ASSENTE</Text>
                             </View>
                           )}
                           {/* Overlay permesso — fascia oraria */}
-                          {isAssente && isPermesso && permOv && (
+                          {overlayTipo === "permesso" && permOv && (
                             <View style={{ position: "absolute", top: permOv.top, left: 0, right: 0, height: permOv.height, backgroundColor: "rgba(30,15,0,0.72)", alignItems: "center", justifyContent: "center" }}>
                               <Text style={{ color: "#E5734A", fontSize: 10, fontWeight: "800", letterSpacing: 1 }}>PERMESSO</Text>
                             </View>
@@ -1752,8 +1792,8 @@ export default function AdminDashboard() {
         </View>
       )}
 
-      {/* MODAL PERMESSO */}
-      {showPermesso && (
+      {/* MODAL PERMESSO — STEP 1: FORM */}
+      {showPermesso && permessoStep === "form" && (
         <View style={st.modalOv}>
           <View style={st.modal}>
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
@@ -1761,7 +1801,7 @@ export default function AdminDashboard() {
                 <View style={{ flex: 1 }}>
                   <Text style={[st.mTitle, { color: "#E5734A" }]}>🕐 Permesso Temporaneo</Text>
                 </View>
-                <Pressable onPress={() => setShowPermesso(false)} style={{ padding: 4, marginTop: 2 }}>
+                <Pressable onPress={() => { setShowPermesso(false); setPermessoStep("form"); }} style={{ padding: 4, marginTop: 2 }}>
                   <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
                 </Pressable>
               </View>
@@ -1786,11 +1826,11 @@ export default function AdminDashboard() {
                 </Pressable>
               </View>
 
-              {barbieri.filter((b) => !b.assente).length > 1 && (
+              {barbieri.length > 1 && (
                 <>
                   <Text style={st.mLabel}>BARBIERE</Text>
                   <View style={[st.mGrid, { marginBottom: 16 }]}>
-                    {barbieri.filter((b) => !b.assente).map((b) => (
+                    {barbieri.map((b) => (
                       <Pressable key={b.id} style={[st.mChip, { flex: 1, alignItems: "center" }, assenzaBarbiere === b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}>
                         <Text style={[st.mChipText, assenzaBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
                       </Pressable>
@@ -1799,24 +1839,79 @@ export default function AdminDashboard() {
                 </>
               )}
 
-              {permessoData > todayStr && (
-                <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
-                  {`Il permesso verrà attivato automaticamente il ${fmtDataShort(permessoData)} alle ${permessoOraInizio}.`}
-                </Text>
-              )}
-
               <View style={st.mBtns}>
-                <Pressable style={st.mCancel} onPress={() => setShowPermesso(false)}>
+                <Pressable style={st.mCancel} onPress={() => { setShowPermesso(false); setPermessoStep("form"); }}>
                   <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
                 </Pressable>
-                <Pressable style={[st.mConfirm, { backgroundColor: "#E5734A" }]} onPress={segnaPermesso}>
-                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
+                <Pressable
+                  style={[st.mConfirm, { backgroundColor: "#E5734A" }, (!assenzaBarbiere || !permessoOraInizio) && { opacity: 0.4 }]}
+                  onPress={() => {
+                    if (!assenzaBarbiere) { msg("Seleziona un barbiere"); return; }
+                    if (!permessoOraInizio) { msg("Inserisci l'orario di inizio"); return; }
+                    setPermessoStep("riepilogo");
+                  }}
+                >
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Avanti →</Text>
                 </Pressable>
               </View>
             </ScrollView>
           </View>
         </View>
       )}
+
+      {/* MODAL PERMESSO — STEP 2: RIEPILOGO */}
+      {showPermesso && permessoStep === "riepilogo" && (() => {
+        const barbNome = tuttiBarbieri.find((b: any) => b.id === assenzaBarbiere)?.nome || barbieri.find((b: any) => b.id === assenzaBarbiere)?.nome || "";
+        const [oraH, oraM] = permessoOraInizio.split(":");
+        const totMin = (parseInt(oraH) || 0) * 60 + (parseInt(oraM) || 0) + permessoMinuti;
+        const oraFineStr = `${String(Math.floor(totMin / 60) % 24).padStart(2,"0")}:${String(totMin % 60).padStart(2,"0")}`;
+        const haGiaPermesso = tuttiBarbieri.find((b: any) => b.id === assenzaBarbiere)?.motivo_assenza;
+        const righe = [
+          { label: "Barbiere", value: barbNome },
+          { label: "Data", value: fmtDataLunga(permessoData) },
+          { label: "Inizio", value: permessoOraInizio },
+          { label: "Fine", value: oraFineStr },
+          { label: "Durata", value: fmtDurata(permessoMinuti) },
+        ];
+        return (
+          <View style={st.modalOv}>
+            <View style={st.modal}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.mTitle, { color: "#E5734A" }]}>Riepilogo Permesso</Text>
+                </View>
+                <Pressable onPress={() => { setShowPermesso(false); setPermessoStep("form"); }} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
+              </View>
+              <View style={{ backgroundColor: "#0A0A0A", borderRadius: 14, borderWidth: 1, borderColor: "#1A1A1A", overflow: "hidden", marginBottom: 16 }}>
+                {righe.map((r, i) => (
+                  <View key={r.label} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: "#141414" }}>
+                    <Text style={{ color: "#555", fontSize: 11, width: 68, textTransform: "uppercase", letterSpacing: 0.5 }}>{r.label}</Text>
+                    <Text style={{ color: "#DDD", fontSize: 14, fontWeight: "600", flex: 1 }}>{r.value}</Text>
+                  </View>
+                ))}
+              </View>
+              {haGiaPermesso && (
+                <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+                  ⚠️ Questo barbiere ha già un permesso/assenza attiva — verrà sostituita.
+                </Text>
+              )}
+              <Text style={{ color: "#E5734A", fontSize: 12, marginBottom: 20, lineHeight: 17 }}>
+                Gli appuntamenti nel periodo indicato verranno cancellati.
+              </Text>
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setPermessoStep("form")}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>← Indietro</Text>
+                </Pressable>
+                <Pressable style={[st.mConfirm, { backgroundColor: "#E5734A" }]} onPress={segnaPermesso}>
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* MODAL MODIFICA */}
       {showModifica && modificaApp && (
