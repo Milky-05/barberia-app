@@ -348,36 +348,43 @@ export default function SceltaData() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.horizontalScroll}
               >
-                {barbieri.map((b) => (
-                  <Pressable
-                    key={b.id}
-                    style={[
-                      styles.barberCard,
-                      barbiereSelezionato?.id === b.id &&
-                        styles.barberCardSelected,
-                    ]}
-                    onPress={() => setBarbiereSelezionato(b)}
-                  >
-                    <View
+                {barbieri.map((b) => {
+                  const isDisab = b.disabilitato || b.assente;
+                  const isSelected = barbiereSelezionato?.id === b.id && !isDisab;
+                  return (
+                    <Pressable
+                      key={b.id}
                       style={[
-                        styles.barberAvatar,
-                        barbiereSelezionato?.id === b.id &&
-                          styles.barberAvatarSelected,
+                        styles.barberCard,
+                        isSelected && styles.barberCardSelected,
+                        isDisab && { opacity: 0.38 },
                       ]}
+                      onPress={() => !isDisab && setBarbiereSelezionato(b)}
                     >
-                      <Text style={styles.barberAvatarText}>💈</Text>
-                    </View>
-                    <Text
-                      style={[
-                        styles.barberName,
-                        barbiereSelezionato?.id === b.id &&
-                          styles.barberNameSelected,
-                      ]}
-                    >
-                      {b.nome}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <View
+                        style={[
+                          styles.barberAvatar,
+                          isSelected && styles.barberAvatarSelected,
+                        ]}
+                      >
+                        <Text style={styles.barberAvatarText}>💈</Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.barberName,
+                          isSelected && styles.barberNameSelected,
+                        ]}
+                      >
+                        {b.nome}
+                      </Text>
+                      {isDisab && (
+                        <Text style={{ color: "#E5734A", fontSize: 9, textAlign: "center", marginTop: 2, fontWeight: "700", letterSpacing: 0.5 }}>
+                          ASSENTE
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </ScrollView>
             )}
           </Animated.View>

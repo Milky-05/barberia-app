@@ -67,11 +67,12 @@ const BACKEND_URL = "https://barberia-backend-bulldog.onrender.com";
 const MESI_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI_IT = ["Lu","Ma","Me","Gi","Ve","Sa","Do"];
 
-function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
+function CalendarioInline({ value, onChange, min, marginBottom = 14, disabledDow = [] }: {
   value: string;
   onChange: (v: string) => void;
   min?: string;
   marginBottom?: number;
+  disabledDow?: number[];
 }) {
   const oggi = new Date();
   const oggiStr = `${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,"0")}-${String(oggi.getDate()).padStart(2,"0")}`;
@@ -120,6 +121,7 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   const selectDay = (day: number) => {
     const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     if (min && ds < min) return;
+    if (disabledDow.length > 0 && disabledDow.includes(new Date(ds).getDay())) return;
     onChange(ds);
     closeCal();
   };
@@ -169,7 +171,8 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
                   const ds = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
                   const isSelected = ds === value;
                   const isOggi = ds === oggiStr;
-                  const isDisabled = !!(min && ds < min);
+                  const isDowDisabled = disabledDow.length > 0 && disabledDow.includes(new Date(ds).getDay());
+                  const isDisabled = !!(min && ds < min) || isDowDisabled;
                   return (
                     <Pressable
                       key={ci}
@@ -1256,7 +1259,9 @@ export default function AdminDashboard() {
                         } else if (bData.motivo_assenza) {
                           try {
                             const info = JSON.parse(bData.motivo_assenza);
-                            if (new Date(info.inizio).toISOString().split("T")[0] === dataCorrente) {
+                            const d = new Date(info.inizio);
+                            const localD = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                            if (localD === dataCorrente) {
                               soloOverlayTipo = "permesso";
                               soloPermOv = calcPermOvS(bData.motivo_assenza);
                             }
@@ -1267,12 +1272,27 @@ export default function AdminDashboard() {
                           if (bp.id !== bData.id) return false;
                           try {
                             const info = JSON.parse(bp.motivo_assenza);
-                            return info.tipo === "permesso" && new Date(info.inizio).toISOString().split("T")[0] === dataCorrente;
+                            if (info.tipo === "permesso") {
+                              const d = new Date(info.inizio);
+                              const ld = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                              return ld === dataCorrente;
+                            }
+                            if (info.tipo === "assente") {
+                              return dataCorrente >= info.inizio && (!info.fine || dataCorrente <= info.fine);
+                            }
+                            return false;
                           } catch { return false; }
                         });
                         if (prog) {
-                          soloOverlayTipo = "permesso";
-                          soloPermOv = calcPermOvS(prog.motivo_assenza);
+                          try {
+                            const info = JSON.parse(prog.motivo_assenza);
+                            if (info.tipo === "permesso") {
+                              soloOverlayTipo = "permesso";
+                              soloPermOv = calcPermOvS(prog.motivo_assenza);
+                            } else {
+                              soloOverlayTipo = "assente";
+                            }
+                          } catch {}
                         }
                       }
                       return (
@@ -1409,27 +1429,44 @@ export default function AdminDashboard() {
                             }
                           } catch { overlayTipo = "assente"; }
                         } else if (b.motivo_assenza) {
-                          // Permesso attivo: mostra overlay solo nel giorno del permesso
+                          // Permesso attivo: mostra overlay solo nel giorno del permesso (data locale)
                           try {
                             const info = JSON.parse(b.motivo_assenza);
-                            if (new Date(info.inizio).toISOString().split("T")[0] === dataCorrente) {
+                            const d = new Date(info.inizio);
+                            const localD = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                            if (localD === dataCorrente) {
                               overlayTipo = "permesso";
                               permOv = calcPermOv(b.motivo_assenza);
                             }
                           } catch {}
                         }
                       } else {
-                        // Permesso programmato per la data corrente
+                        // Assenza o permesso programmato per la data corrente
                         const prog = barbieriProgrammati.find((bp: any) => {
                           if (bp.id !== b.id) return false;
                           try {
                             const info = JSON.parse(bp.motivo_assenza);
-                            return info.tipo === "permesso" && new Date(info.inizio).toISOString().split("T")[0] === dataCorrente;
+                            if (info.tipo === "permesso") {
+                              const d = new Date(info.inizio);
+                              const ld = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                              return ld === dataCorrente;
+                            }
+                            if (info.tipo === "assente") {
+                              return dataCorrente >= info.inizio && (!info.fine || dataCorrente <= info.fine);
+                            }
+                            return false;
                           } catch { return false; }
                         });
                         if (prog) {
-                          overlayTipo = "permesso";
-                          permOv = calcPermOv(prog.motivo_assenza);
+                          try {
+                            const info = JSON.parse(prog.motivo_assenza);
+                            if (info.tipo === "permesso") {
+                              overlayTipo = "permesso";
+                              permOv = calcPermOv(prog.motivo_assenza);
+                            } else {
+                              overlayTipo = "assente";
+                            }
+                          } catch {}
                         }
                       }
 
@@ -1832,7 +1869,7 @@ export default function AdminDashboard() {
               </Text>
 
               <Text style={st.mLabel}>DATA</Text>
-              <CalendarioInline value={permessoData} onChange={setPermessoData} min={todayStr} marginBottom={14} />
+              <CalendarioInline value={permessoData} onChange={setPermessoData} min={todayStr} marginBottom={14} disabledDow={[0, 1]} />
 
               <Text style={st.mLabel}>ORARIO INIZIO</Text>
               <OrarioInline value={permessoOraInizio} onChange={setPermessoOraInizio} marginBottom={14} />
