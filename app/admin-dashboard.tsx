@@ -191,6 +191,102 @@ function CalendarioInline({ value, onChange, min, marginBottom = 14 }: {
   );
 }
 
+const ORE_DISP = ["07","08","09","10","11","12","13","14","15","16","17","18","19","20","21"];
+const MIN_DISP = ["00","10","20","30","40","50"];
+
+function OrarioInline({ value, onChange, marginBottom = 14 }: {
+  value: string;
+  onChange: (v: string) => void;
+  marginBottom?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [measuredH, setMeasuredH] = useState(0);
+  const animVal = useRef(new Animated.Value(0)).current;
+  const heightAnim = useRef(new Animated.Value(0)).current;
+
+  const parts = value ? value.split(":") : ["", ""];
+  const selOra = parts[0] || "";
+  const selMin = parts[1]?.slice(0, 2) || "";
+
+  const estimatedH = measuredH > 0 ? measuredH : 240;
+
+  const openSel = () => {
+    setVisible(true);
+    setOpen(true);
+    Animated.parallel([
+      Animated.timing(animVal,    { toValue: 1, duration: 260, useNativeDriver: false }),
+      Animated.timing(heightAnim, { toValue: estimatedH, duration: 260, useNativeDriver: false }),
+    ]).start();
+  };
+
+  const closeSel = () => {
+    setOpen(false);
+    Animated.parallel([
+      Animated.timing(animVal,    { toValue: 0, duration: 260, useNativeDriver: false }),
+      Animated.timing(heightAnim, { toValue: 0, duration: 260, useNativeDriver: false }),
+    ]).start(() => setVisible(false));
+  };
+
+  const pickOra = (ora: string) => {
+    onChange(`${ora}:${selMin || "00"}`);
+  };
+
+  const pickMin = (min: string) => {
+    onChange(`${selOra || "09"}:${min}`);
+    closeSel();
+  };
+
+  return (
+    <View style={{ marginBottom }}>
+      <Pressable
+        onPress={() => open ? closeSel() : openSel()}
+        style={{ backgroundColor: "#0A0A0A", borderWidth: 1.5, borderColor: open ? "#D4AF37" : "#1A1A1A", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+      >
+        <Text style={{ color: value ? "#FFF" : "#444", fontSize: 15 }}>{value || "HH : MM"}</Text>
+        <Text style={{ color: open ? "#D4AF37" : "#444", fontSize: 11 }}>{open ? "▲" : "▼"}</Text>
+      </Pressable>
+
+      {visible && (
+        <Animated.View style={{ height: heightAnim, overflow: "hidden", marginTop: 6 }}>
+          <Animated.View
+            onLayout={(e) => { const h = e.nativeEvent.layout.height; if (h > 0) setMeasuredH(h); }}
+            style={{ opacity: animVal, backgroundColor: "#0D0D0D", borderRadius: 14, borderWidth: 1, borderColor: "#1E1E1E", padding: 14 }}
+          >
+            <Text style={{ color: "#444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 }}>ORA</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              {ORE_DISP.map(ora => (
+                <Pressable
+                  key={ora}
+                  onPress={() => pickOra(ora)}
+                  style={{ paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8, backgroundColor: selOra === ora ? "#D4AF37" : "#141414", minWidth: 40, alignItems: "center" }}
+                >
+                  <Text style={{ color: selOra === ora ? "#000" : "#AAA", fontSize: 13, fontWeight: selOra === ora ? "700" : "400" }}>{ora}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={{ height: 1, backgroundColor: "#1E1E1E", marginBottom: 12 }} />
+
+            <Text style={{ color: "#444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5, marginBottom: 8 }}>MINUTI</Text>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {MIN_DISP.map(min => (
+                <Pressable
+                  key={min}
+                  onPress={() => pickMin(min)}
+                  style={{ flex: 1, paddingVertical: 7, borderRadius: 8, backgroundColor: selMin === min ? "#D4AF37" : "#141414", alignItems: "center" }}
+                >
+                  <Text style={{ color: selMin === min ? "#000" : "#AAA", fontSize: 13, fontWeight: selMin === min ? "700" : "400" }}>:{min}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
 export default function AdminDashboard() {
   const [token, setToken] = useState("");
   const [utente, setUtente] = useState<any>(null);
@@ -743,9 +839,16 @@ export default function AdminDashboard() {
     );
   const attivi = prenotazioni.filter((p) => p.stato === "attivo");
 
-  const barbieriTabella = filtroBarbiere
-    ? barbieri.filter((b) => b.id === filtroBarbiere)
+  // Griglia: barbieri disponibili + assenti (con overlay), presi da tuttiBarbieri che ha assente/motivo_assenza
+  const barbieriGriglia = tuttiBarbieri.length > 0
+    ? tuttiBarbieri.filter((b: any) =>
+        barbieri.some((bb: any) => bb.id === b.id) ||
+        barbieriAssenti.some((ba: any) => ba.id === b.id)
+      )
     : barbieri;
+  const barbieriTabella = filtroBarbiere
+    ? barbieriGriglia.filter((b: any) => b.id === filtroBarbiere)
+    : barbieriGriglia;
 
   const prenotazioniPerBarbiere = barbieriTabella.map((b) => ({
     ...b,
@@ -906,16 +1009,26 @@ export default function AdminDashboard() {
                 {barbieriProgrammati.map((b) => {
                   const info = JSON.parse(b.motivo_assenza);
                   const isP = info.tipo === "permesso";
-                  const inizio = isP ? new Date(info.inizio).toISOString().split("T")[0] : info.inizio;
-                  const fine = info.fine;
-                  const giorni = info.giorni;
-                  const durataStr = fine
-                    ? `dal ${fmtDataShort(inizio)} al ${fmtDataShort(fine)}${giorni ? ` (${giorni} ${giorni === 1 ? "giorno" : "giorni"})` : ""}`
-                    : `dal ${fmtDataShort(inizio)} (durata indeterminata)`;
+                  const durataStr = (() => {
+                    if (isP) {
+                      const inizioD = new Date(info.inizio);
+                      const fineD = new Date(info.fine);
+                      const dataStr = fmtDataShort(inizioD.toISOString().split("T")[0]);
+                      const oraI = `${String(inizioD.getHours()).padStart(2,"0")}:${String(inizioD.getMinutes()).padStart(2,"0")}`;
+                      const oraF = `${String(fineD.getHours()).padStart(2,"0")}:${String(fineD.getMinutes()).padStart(2,"0")}`;
+                      return `il ${dataStr} dalle ${oraI} alle ${oraF}`;
+                    }
+                    const inizio = info.inizio;
+                    const fine = info.fine;
+                    const giorni = info.giorni;
+                    return fine
+                      ? `dal ${fmtDataShort(inizio)} al ${fmtDataShort(fine)}${giorni ? ` (${giorni} ${giorni === 1 ? "giorno" : "giorni"})` : ""}`
+                      : `dal ${fmtDataShort(inizio)}`;
+                  })();
                   return (
                     <View key={b.id} style={[st.absCard, { borderColor: "rgba(212,175,55,0.2)", backgroundColor: "rgba(212,175,55,0.03)", marginBottom: 0 }]}>
                       <View style={{ flex: 1 }}>
-                        <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {isP ? "permesso" : "assenza"} programmata</Text>
+                        <Text style={[st.absText, { color: "#888" }]}>🕓 {b.nome} — {isP ? "permesso programmato" : "assenza programmata"}</Text>
                         <Text style={{ color: "#666", fontSize: 11, marginTop: 2 }}>{durataStr}</Text>
                       </View>
                       <Pressable style={st.absBtn} onPress={() => riattiva(b.id)}>
@@ -1660,14 +1773,7 @@ export default function AdminDashboard() {
               <CalendarioInline value={permessoData} onChange={setPermessoData} min={todayStr} marginBottom={14} />
 
               <Text style={st.mLabel}>ORARIO INIZIO</Text>
-              {Platform.OS === "web" ? (
-                // @ts-ignore
-                <input type="time" value={permessoOraInizio} onChange={(e: any) => setPermessoOraInizio(e.target.value)}
-                  onFocus={() => setFocusedInput("permessoOra")} onBlur={() => setFocusedInput(null)}
-                  style={{ background: "#0A0A0A", border: focusedInput === "permessoOra" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 14, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
-              ) : (
-                <TextInput style={[st.mInput, { marginBottom: 14 }]} value={permessoOraInizio} onChangeText={setPermessoOraInizio} placeholder="HH:MM" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
-              )}
+              <OrarioInline value={permessoOraInizio} onChange={setPermessoOraInizio} marginBottom={14} />
 
               <Text style={st.mLabel}>DURATA</Text>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 20 }}>
