@@ -1111,38 +1111,75 @@ export default function AdminDashboard() {
                     </View>
 
                     {/* Colonna appuntamenti */}
-                    <View style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
-                      {orariGiornata.map((ora, idx) => (
-                        <View key={ora} style={{ position: "absolute", top: idx * SLOT_H, left: 0, right: 0, height: 1, backgroundColor: "#1A1A1A" }} />
-                      ))}
-                      {appsBarb.map((app: any) => {
-                        const startStr = (app.ora || "").slice(0, 5);
-                        const startIdx = orariGiornata.indexOf(startStr);
-                        if (startIdx === -1) return null;
-                        const numSlots = Math.max(1, Math.ceil((app.durata_minuti || 20) / 20));
-                        const cardTop = startIdx * SLOT_H + 3;
-                        const cardH = numSlots * SLOT_H - 6;
-                        return (
-                          <Pressable
-                            key={app.id}
-                            onPress={() => setAppDetail(app)}
-                            style={{ position: "absolute", top: cardTop, left: 3, right: 3, height: cardH, backgroundColor: "#1C1C1C", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: color, padding: 8, justifyContent: "center", overflow: "hidden" }}
-                          >
-                            <Text style={{ color: "#FFF", fontSize: FONT_NOME, fontWeight: "700" }} numberOfLines={1}>{app.cliente_nome}</Text>
-                            <Text style={{ color: "#888", fontSize: FONT_SERV }} numberOfLines={1}>{app.servizio_nome}</Text>
-                            <Text style={{ color: "#555", fontSize: FONT_DUR }}>{app.durata_minuti || 20} min</Text>
-                            <View style={{ position: "absolute", top: 6, right: 6, flexDirection: "row", gap: 8 }}>
-                              <Pressable onPress={() => apriModifica(app)}>
-                                <Text style={{ fontSize: isDesktop ? 15 : 13 }}>✏️</Text>
+                    {(() => {
+                      const bData = prenotazioniPerBarbiere[0];
+                      const isAssente = bData?.assente;
+                      const isPermesso = isAssente && isPermessoBarbiere(bData);
+                      let permOv: { top: number; height: number } | null = null;
+                      if (isAssente && isPermesso && bData?.motivo_assenza) {
+                        try {
+                          const info = JSON.parse(bData.motivo_assenza);
+                          if (info.tipo === "permesso" && info.stato === "attivo") {
+                            const inizio = new Date(info.inizio);
+                            const fine = new Date(info.fine);
+                            const sm = inizio.getHours() * 60 + inizio.getMinutes();
+                            const ss = Math.floor(sm / 20) * 20;
+                            const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
+                            const si = orariGiornata.indexOf(oraS);
+                            if (si !== -1) {
+                              const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
+                              permOv = { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
+                            }
+                          }
+                        } catch {}
+                      }
+                      return (
+                        <View style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
+                          {orariGiornata.map((ora, idx) => (
+                            <View key={ora} style={{ position: "absolute", top: idx * SLOT_H, left: 0, right: 0, height: 1, backgroundColor: "#1A1A1A" }} />
+                          ))}
+                          {appsBarb.map((app: any) => {
+                            const startStr = (app.ora || "").slice(0, 5);
+                            const startIdx = orariGiornata.indexOf(startStr);
+                            if (startIdx === -1) return null;
+                            const numSlots = Math.max(1, Math.ceil((app.durata_minuti || 20) / 20));
+                            const cardTop = startIdx * SLOT_H + 3;
+                            const cardH = numSlots * SLOT_H - 6;
+                            return (
+                              <Pressable
+                                key={app.id}
+                                onPress={() => setAppDetail(app)}
+                                style={{ position: "absolute", top: cardTop, left: 3, right: 3, height: cardH, backgroundColor: "#1C1C1C", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: color, padding: 8, justifyContent: "center", overflow: "hidden" }}
+                              >
+                                <Text style={{ color: "#FFF", fontSize: FONT_NOME, fontWeight: "700" }} numberOfLines={1}>{app.cliente_nome}</Text>
+                                <Text style={{ color: "#888", fontSize: FONT_SERV }} numberOfLines={1}>{app.servizio_nome}</Text>
+                                <Text style={{ color: "#555", fontSize: FONT_DUR }}>{app.durata_minuti || 20} min</Text>
+                                <View style={{ position: "absolute", top: 6, right: 6, flexDirection: "row", gap: 8 }}>
+                                  <Pressable onPress={() => apriModifica(app)}>
+                                    <Text style={{ fontSize: isDesktop ? 15 : 13 }}>✏️</Text>
+                                  </Pressable>
+                                  <Pressable onPress={() => cancella(app.id)}>
+                                    <Text style={{ fontSize: isDesktop ? 15 : 13 }}>🗑️</Text>
+                                  </Pressable>
+                                </View>
                               </Pressable>
-                              <Pressable onPress={() => cancella(app.id)}>
-                                <Text style={{ fontSize: isDesktop ? 15 : 13 }}>🗑️</Text>
-                              </Pressable>
+                            );
+                          })}
+                          {/* Overlay assente — intera colonna */}
+                          {isAssente && !isPermesso && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ color: "#F44336", fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>ASSENTE</Text>
                             </View>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
+                          )}
+                          {/* Overlay permesso — fascia oraria */}
+                          {isAssente && isPermesso && permOv && (
+                            <View style={{ position: "absolute", top: permOv.top, left: 0, right: 0, height: permOv.height, backgroundColor: "rgba(30,15,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ color: "#E5734A", fontSize: 10, fontWeight: "800", letterSpacing: 1 }}>PERMESSO</Text>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })()}
                   </View>
                 </View>
               );
@@ -1201,6 +1238,26 @@ export default function AdminDashboard() {
                     {prenotazioniPerBarbiere.map((b) => {
                       const color = getBarbColor(b.id);
                       const appsBarb = attivi.filter((p: any) => p.barbiere_id === b.id);
+                      const isAssente = b.assente;
+                      const isPermesso = isAssente && isPermessoBarbiere(b);
+                      let permOv: { top: number; height: number } | null = null;
+                      if (isAssente && isPermesso && b.motivo_assenza) {
+                        try {
+                          const info = JSON.parse(b.motivo_assenza);
+                          if (info.tipo === "permesso" && info.stato === "attivo") {
+                            const inizio = new Date(info.inizio);
+                            const fine = new Date(info.fine);
+                            const sm = inizio.getHours() * 60 + inizio.getMinutes();
+                            const ss = Math.floor(sm / 20) * 20;
+                            const oraS = `${String(Math.floor(ss/60)).padStart(2,"0")}:${String(ss%60).padStart(2,"0")}`;
+                            const si = orariGiornata.indexOf(oraS);
+                            if (si !== -1) {
+                              const durMin = Math.round((fine.getTime() - inizio.getTime()) / 60000);
+                              permOv = { top: si * SLOT_H, height: Math.ceil(durMin / 20) * SLOT_H };
+                            }
+                          }
+                        } catch {}
+                      }
                       return (
                         <View key={b.id} style={{ flex: 1, height: totalH, borderLeftWidth: 1, borderLeftColor: "#1E1E1E" }}>
                           {/* Linee guida slot */}
@@ -1243,6 +1300,18 @@ export default function AdminDashboard() {
                               </Pressable>
                             );
                           })}
+                          {/* Overlay assente — intera colonna */}
+                          {isAssente && !isPermesso && (
+                            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,0,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ color: "#F44336", fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>ASSENTE</Text>
+                            </View>
+                          )}
+                          {/* Overlay permesso — fascia oraria */}
+                          {isAssente && isPermesso && permOv && (
+                            <View style={{ position: "absolute", top: permOv.top, left: 0, right: 0, height: permOv.height, backgroundColor: "rgba(30,15,0,0.72)", alignItems: "center", justifyContent: "center" }}>
+                              <Text style={{ color: "#E5734A", fontSize: 10, fontWeight: "800", letterSpacing: 1 }}>PERMESSO</Text>
+                            </View>
+                          )}
                         </View>
                       );
                     })}
@@ -1574,113 +1643,71 @@ export default function AdminDashboard() {
       {showPermesso && (
         <View style={st.modalOv}>
           <View style={st.modal}>
-            <Text style={st.mTitle}>🕐 Permesso Temporaneo</Text>
-            <Text style={{ color: "#888", fontSize: 12, marginBottom: 16, textAlign: "center" }}>
-              Gli appuntamenti esistenti non vengono cancellati.
-            </Text>
-
-            <Text style={st.mLabel}>DATA</Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-              {[{ label: "Oggi", val: todayStr }, { label: "Domani", val: domaniStr }].map(({ label, val }) => (
-                <Pressable
-                  key={label}
-                  style={[st.oreBtn, permessoData === val && st.oreBtnA, { flex: 1 }]}
-                  onPress={() => setPermessoData(val)}
-                >
-                  <Text style={[st.oreBtnText, permessoData === val && st.oreBtnTextA]}>{label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            {Platform.OS === "web" ? (
-              // @ts-ignore
-              <input
-                type="date"
-                value={permessoData}
-                onChange={(e: any) => setPermessoData(e.target.value)}
-                min={todayStr}
-                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 14, colorScheme: "dark", boxSizing: "border-box" }}
-              />
-            ) : (
-              <TextInput
-                style={[st.mInput, { marginBottom: 14 }]}
-                value={permessoData}
-                onChangeText={setPermessoData}
-                placeholder="AAAA-MM-GG"
-                placeholderTextColor="#333"
-                keyboardType="numbers-and-punctuation"
-              />
-            )}
-
-            <Text style={st.mLabel}>ORARIO INIZIO</Text>
-            {Platform.OS === "web" ? (
-              // @ts-ignore
-              <input
-                type="time"
-                value={permessoOraInizio}
-                onChange={(e: any) => setPermessoOraInizio(e.target.value)}
-                style={{ background: "#141414", border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 14px", color: "#FFF", fontSize: 14, width: "100%", marginBottom: 16, colorScheme: "dark", boxSizing: "border-box" }}
-              />
-            ) : (
-              <TextInput
-                style={[st.mInput, { marginBottom: 16 }]}
-                value={permessoOraInizio}
-                onChangeText={setPermessoOraInizio}
-                placeholder="HH:MM"
-                placeholderTextColor="#333"
-                keyboardType="numbers-and-punctuation"
-              />
-            )}
-
-            <Text style={st.mLabel}>DURATA</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 20 }}>
-              <Pressable
-                style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]}
-                onPress={() => setPermessoMinuti((p) => Math.max(30, p - 30))}
-              >
-                <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>−</Text>
-              </Pressable>
-              <Text style={{ color: "#FFF", fontSize: 22, fontWeight: "800", minWidth: 110, textAlign: "center" }}>
-                {fmtDurata(permessoMinuti)}
-              </Text>
-              <Pressable
-                style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]}
-                onPress={() => setPermessoMinuti((p) => Math.min(480, p + 30))}
-              >
-                <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>+</Text>
-              </Pressable>
-            </View>
-
-            {barbieri.length > 1 && (
-              <>
-                <Text style={[st.mLabel, { marginBottom: 8 }]}>BARBIERE</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-                  {barbieri.filter((b) => !b.assente).map((b) => (
-                    <Pressable
-                      key={b.id}
-                      style={[st.filtroItem, assenzaBarbiere === b.id && st.filtroItemA, { borderRadius: 10, borderWidth: 1, borderColor: "#222", paddingHorizontal: 14, paddingVertical: 8 }]}
-                      onPress={() => setAssenzaBarbiere(b.id)}
-                    >
-                      <Text style={[st.filtroItemText, assenzaBarbiere === b.id && st.filtroItemTextA]}>{b.nome}</Text>
-                    </Pressable>
-                  ))}
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.mTitle, { color: "#E5734A" }]}>🕐 Permesso Temporaneo</Text>
                 </View>
-              </>
-            )}
-
-            {permessoData > todayStr && (
-              <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
-                {`Il permesso verrà attivato automaticamente il ${fmtDataShort(permessoData)} alle ${permessoOraInizio}.`}
+                <Pressable onPress={() => setShowPermesso(false)} style={{ padding: 4, marginTop: 2 }}>
+                  <Text style={{ color: "#444", fontSize: 22, lineHeight: 22 }}>×</Text>
+                </Pressable>
+              </View>
+              <Text style={{ color: "#888", fontSize: 12, marginBottom: 16 }}>
+                Gli appuntamenti nel periodo indicato verranno cancellati.
               </Text>
-            )}
 
-            <View style={st.mBtns}>
-              <Pressable style={st.mCancel} onPress={() => setShowPermesso(false)}>
-                <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
-              </Pressable>
-              <Pressable style={[st.mConfirm, { backgroundColor: "#E5734A" }]} onPress={segnaPermesso}>
-                <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
-              </Pressable>
-            </View>
+              <Text style={st.mLabel}>DATA</Text>
+              <CalendarioInline value={permessoData} onChange={setPermessoData} min={todayStr} marginBottom={14} />
+
+              <Text style={st.mLabel}>ORARIO INIZIO</Text>
+              {Platform.OS === "web" ? (
+                // @ts-ignore
+                <input type="time" value={permessoOraInizio} onChange={(e: any) => setPermessoOraInizio(e.target.value)}
+                  onFocus={() => setFocusedInput("permessoOra")} onBlur={() => setFocusedInput(null)}
+                  style={{ background: "#0A0A0A", border: focusedInput === "permessoOra" ? "1.5px solid #D4AF37" : "1.5px solid #1A1A1A", borderRadius: 12, padding: "13px 14px", color: "#FFF", fontSize: 15, fontFamily: "inherit", width: "100%", marginBottom: 14, colorScheme: "dark", accentColor: "#D4AF37", boxSizing: "border-box", outline: "none", cursor: "pointer" }} />
+              ) : (
+                <TextInput style={[st.mInput, { marginBottom: 14 }]} value={permessoOraInizio} onChangeText={setPermessoOraInizio} placeholder="HH:MM" placeholderTextColor="#333" keyboardType="numbers-and-punctuation" />
+              )}
+
+              <Text style={st.mLabel}>DURATA</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24, marginBottom: 20 }}>
+                <Pressable style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]} onPress={() => setPermessoMinuti((p) => Math.max(30, p - 30))}>
+                  <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>−</Text>
+                </Pressable>
+                <Text style={{ color: "#FFF", fontSize: 22, fontWeight: "800", minWidth: 110, textAlign: "center" }}>{fmtDurata(permessoMinuti)}</Text>
+                <Pressable style={[st.oreBtn, { width: 48, height: 48, alignItems: "center", justifyContent: "center" }]} onPress={() => setPermessoMinuti((p) => Math.min(480, p + 30))}>
+                  <Text style={[st.oreBtnText, { fontSize: 22, fontWeight: "800" }]}>+</Text>
+                </Pressable>
+              </View>
+
+              {barbieri.filter((b) => !b.assente).length > 1 && (
+                <>
+                  <Text style={st.mLabel}>BARBIERE</Text>
+                  <View style={[st.mGrid, { marginBottom: 16 }]}>
+                    {barbieri.filter((b) => !b.assente).map((b) => (
+                      <Pressable key={b.id} style={[st.mChip, { flex: 1, alignItems: "center" }, assenzaBarbiere === b.id && st.mChipA]} onPress={() => setAssenzaBarbiere(b.id)}>
+                        <Text style={[st.mChipText, assenzaBarbiere === b.id && st.mChipTextA]}>{b.nome}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {permessoData > todayStr && (
+                <Text style={{ color: "#D4AF37", fontSize: 12, marginBottom: 12, lineHeight: 17 }}>
+                  {`Il permesso verrà attivato automaticamente il ${fmtDataShort(permessoData)} alle ${permessoOraInizio}.`}
+                </Text>
+              )}
+
+              <View style={st.mBtns}>
+                <Pressable style={st.mCancel} onPress={() => setShowPermesso(false)}>
+                  <Text style={{ color: "#666", fontWeight: "700", fontSize: 14 }}>Annulla</Text>
+                </Pressable>
+                <Pressable style={[st.mConfirm, { backgroundColor: "#E5734A" }]} onPress={segnaPermesso}>
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 14 }}>Conferma</Text>
+                </Pressable>
+              </View>
+            </ScrollView>
           </View>
         </View>
       )}
