@@ -28,10 +28,12 @@ export default function Login() {
   const [cognome, setCognome] = useState("");
   const [telefono, setTelefono] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [otpStato, setOtpStato] = useState<null | "corretto" | "errato">(null);
   const [errore, setErrore] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const redirecting = useRef(false);
+  const otpInputRef = useRef<any>(null);
 
   const logoScale = useRef(new Animated.Value(0.5)).current;
   const logoOp = useRef(new Animated.Value(0)).current;
@@ -246,7 +248,9 @@ export default function Login() {
       options: { shouldCreateUser: false },
     });
     setOtpCode("");
+    setOtpStato(null);
     setErrore("Codice inviato di nuovo!");
+    setTimeout(() => otpInputRef.current?.focus(), 100);
   };
 
   const verificaOtp = async () => {
@@ -259,10 +263,12 @@ export default function Login() {
       type: "email",
     });
     if (error) {
+      setOtpStato("errato");
       setErrore("Codice non valido o scaduto. Riprova.");
       setLoading(false);
       return;
     }
+    setOtpStato("corretto");
     setLoading(false);
   };
 
@@ -270,6 +276,7 @@ export default function Login() {
     setStep("email");
     setPassword("");
     setOtpCode("");
+    setOtpStato(null);
     setErrore("");
   };
 
@@ -476,16 +483,58 @@ export default function Login() {
                 </Text>
 
                 <Text style={s.label}>CODICE DI VERIFICA</Text>
-                <TextInput
-                  style={[s.input, { textAlign: "center", fontSize: 26, letterSpacing: 8, fontWeight: "800" }]}
-                  value={otpCode}
-                  onChangeText={(t) => setOtpCode(t.replace(/\D/g, "").slice(0, 8))}
-                  placeholder="00000000"
-                  placeholderTextColor="#333"
-                  keyboardType="number-pad"
-                  maxLength={8}
-                  autoFocus
-                />
+
+                {/* Box singoli per ogni cifra */}
+                <View style={{ position: "relative", marginBottom: 20 }}>
+                  <View style={{ flexDirection: "row", gap: 8, justifyContent: "center" }}>
+                    {Array.from({ length: 8 }, (_, i) => {
+                      const digit = otpCode[i];
+                      const isActive = i === otpCode.length && !otpStato;
+                      const borderColor =
+                        otpStato === "corretto" ? "#4CAF50"
+                        : otpStato === "errato"  ? "#F44336"
+                        : isActive               ? "#D4AF37"
+                        :                          "#252525";
+                      return (
+                        <View
+                          key={i}
+                          style={{
+                            flex: 1,
+                            maxWidth: 44,
+                            height: 52,
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor,
+                            backgroundColor: "#111",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ color: "#EEE", fontSize: 22, fontWeight: "800" }}>
+                            {digit ?? ""}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  {/* Input invisibile sopra i box — cattura tastiera */}
+                  <TextInput
+                    ref={otpInputRef}
+                    value={otpCode}
+                    onChangeText={(t) => {
+                      setOtpStato(null);
+                      setOtpCode(t.replace(/\D/g, "").slice(0, 8));
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={8}
+                    autoFocus
+                    style={{
+                      position: "absolute",
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      opacity: 0,
+                    }}
+                  />
+                </View>
 
                 {errore ? <Text style={s.errore}>{errore}</Text> : null}
 
