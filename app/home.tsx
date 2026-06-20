@@ -74,24 +74,29 @@ export default function Home() {
 
   const caricaUtente = async () => {
     let u = JSON.parse((await AsyncStorage.getItem("utente")) || "{}");
-    if (!u.nome) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        // Se l'UUID in cache non corrisponde all'utente corrente, ignora la cache
+        if (u.uuid && u.uuid !== session.user.id) {
+          u = {};
+          await AsyncStorage.removeItem("utente");
+        }
+        if (!u.nome) {
           const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${session.access_token}` },
           });
           const json = await res.json();
           if (json.utente?.nome) {
-            u = json.utente;
+            u = { ...json.utente, uuid: session.user.id };
           } else {
             const meta = session.user?.user_metadata;
-            if (meta?.nome) u = { ...u, nome: meta.nome, cognome: meta.cognome, telefono: meta.telefono || u.telefono };
+            if (meta?.nome) u = { ...u, uuid: session.user.id, nome: meta.nome, cognome: meta.cognome, telefono: meta.telefono || u.telefono };
           }
           await AsyncStorage.setItem("utente", JSON.stringify(u));
         }
-      } catch {}
-    }
+      }
+    } catch {}
     setUtente(u);
     setEditNome(u.nome || "");
     setEditCognome(u.cognome || "");

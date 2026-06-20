@@ -54,6 +54,8 @@ export default function Login() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
+        // Cancella la cache utente per evitare che i dati del login precedente vengano mostrati
+        await AsyncStorage.removeItem("utente");
         await redirectByRole(session.user.id);
       }
     });
