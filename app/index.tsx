@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -297,13 +298,15 @@ export default function Login() {
           <Animated.View
             style={[s.logoBox, { opacity: logoOp, transform: [{ scale: logoScale }] }]}
           >
-            <View style={s.logoGlow} />
-            <View style={s.logoWrap}>
-              <Image
-                source={require("../assets/images/logo.png")}
-                style={s.logoImg}
-                resizeMode="cover"
-              />
+            <View style={{ width: 130, height: 130, justifyContent: "center", alignItems: "center" }}>
+              <View style={s.logoGlow} />
+              <View style={s.logoWrap}>
+                <Image
+                  source={require("../assets/images/logo.png")}
+                  style={s.logoImg}
+                  resizeMode="cover"
+                />
+              </View>
             </View>
           </Animated.View>
 
