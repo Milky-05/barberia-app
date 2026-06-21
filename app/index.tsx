@@ -57,8 +57,9 @@ export default function Login() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
-        // Cancella la cache utente per evitare che i dati del login precedente vengano mostrati
         await AsyncStorage.removeItem("utente");
+        // Pausa per mostrare il feedback verde dei box OTP prima del redirect
+        await new Promise(resolve => setTimeout(resolve, 700));
         await redirectByRole(session.user.id);
       }
     });
@@ -119,9 +120,19 @@ export default function Login() {
     try {
       const { data } = await supabase
         .from("profili")
-        .select("ruolo")
+        .select("ruolo, nome, cognome, telefono")
         .eq("id", userId)
         .single();
+      // Pre-carica i dati in AsyncStorage: la home li mostra subito senza aspettare il backend
+      if (data?.nome) {
+        await AsyncStorage.setItem("utente", JSON.stringify({
+          uuid: userId,
+          nome: data.nome,
+          cognome: data.cognome || null,
+          telefono: data.telefono || null,
+          ruolo: data.ruolo,
+        }));
+      }
       if (data?.ruolo === "admin" || data?.ruolo === "super_admin") {
         router.replace("/admin-dashboard" as any);
       } else {
